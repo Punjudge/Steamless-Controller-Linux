@@ -20,14 +20,14 @@ Steam's device rules give you both: install `steam-devices` (or `steam`), then
 plug the controller in again. Without Steam, install
 `packaging/udev/70-steamless-controller.rules` to `/usr/lib/udev/rules.d/` instead.
 
-**Arch Linux / CachyOS:** each release (from 1.25.1 on) also carries a pacman
-package. Install it straight from GitHub:
+**Arch Linux / CachyOS:** each release also carries a pacman package. Copy
+this line as it is; it always fetches the newest release:
 
 ```sh
-sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/download/vX.Y.Z/steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst
+sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst
 ```
 
-It installs the program, the menu entry and the device rule system-wide, and
+Run the same line again to update. It installs the program, the menu entry and the device rule system-wide, and
 `sudo pacman -R steamless-controller-bin` removes it. To build the package
 yourself, or once it is on the AUR, see `packaging/aur/README.md`.
 

@@ -87,7 +87,13 @@ jobs:
           useradd -m builder
           chown -R builder "$PWD"
           su builder -c "bash packaging/arch/make-pkg.sh 'dist/$NAME.tar.gz' '$version' dist/pkg"
-          (cd dist/pkg && sha256sum *.pkg.tar.zst > "$(ls *.pkg.tar.zst).sha256")
+          cd dist/pkg
+          pkg=$(ls steamless-controller-bin-*-x86_64.pkg.tar.zst)
+          # The same package under a name that never changes, so
+          # .../releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst
+          # always gives the newest one.
+          cp "$pkg" steamless-controller-bin-x86_64.pkg.tar.zst
+          for f in *.pkg.tar.zst; do sha256sum "$f" > "$f.sha256"; done
 
       - name: Attach to release
         uses: softprops/action-gh-release@v2

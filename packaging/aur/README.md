@@ -23,10 +23,11 @@ AUR sign-ups are sometimes closed. Until there is an account, a package can
 still reach people:
 
 * **From the release**: every tagged release gets
-  `steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst` (built by the `pacman`
-  job in `.github/workflows/release.yml`), installable with
-  `sudo pacman -U <its download URL>`. pacman does not update it on its own;
-  install the next release the same way.
+  `steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst` plus the same file as
+  `steamless-controller-bin-x86_64.pkg.tar.zst` (built by the `pacman` job in
+  `.github/workflows/release.yml`). The fixed name always resolves to the newest:
+  `sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst`.
+  pacman does not update it on its own; run the same line again.
 * **By hand**: `packaging/arch/make-pkg.sh <release.tar.gz> <version> <dir>`
   builds the same package from a release tarball.
 * **From this folder**: copy `steamless-controller` or
