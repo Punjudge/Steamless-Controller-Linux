@@ -998,6 +998,15 @@ impl Slot {
 
         let lm = self.left_pad.update(&profile.left_pad, lt_touch, lp, lx, ly);
         let rm = self.right_pad.update(&profile.right_pad, rt_touch, rp, rx, ry);
+        for (side, m, area, mode) in [("left", &lm, la, profile.left_pad.mode),
+                                      ("right", &rm, ra, profile.right_pad.mode)] {
+            if let Some(j) = m.jump {
+                eventlog::write(format!(
+                    "TRACKPAD: {side} pad moved {:.0} units in one frame (dx={} dy={}, {:.1}ms since the last touched frame, area={area}, mode={})",
+                    j.dist, j.dx, j.dy, j.since_ms,
+                    if mode == PadMode::MousePointer { "pointer" } else { "scroll" }));
+            }
+        }
 
         let ltrig = (p::i16_at(buf, 6) as i32).max(0);
         let rtrig = (p::i16_at(buf, 8) as i32).max(0);

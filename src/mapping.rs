@@ -183,6 +183,26 @@ pub struct DesktopMotion {
     /// Hi-res wheel units, 120 per notch; positive = away from the user / right.
     pub wheel: i32,
     pub hwheel: i32,
+    /// A movement too far for one frame, to be logged (at most every 3 s).
+    pub jump: Option<PadJump>,
+}
+
+/// TrackpadInput::NoteJump (inside 0x140020dd0, check at 0x140020ec1):
+/// a step of at least this many units between two touched frames is a sensor
+/// jump rather than a finger, about a fifth of the pad's width.
+pub const JUMP_REPORT_UNITS: f64 = 6000.0;
+/// Least time between two jump lines in the log.
+pub const JUMP_LOG_GAP: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// One logged jump. `since_ms` is the time since the previous touched frame,
+/// or -1.0 when there is none yet (the program only sets "have a frame time"
+/// once it has seen a jump, so the first jump always says -1.0).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PadJump {
+    pub dist: f64,
+    pub dx: i32,
+    pub dy: i32,
+    pub since_ms: f64,
 }
 
 /// Lines one wheel notch scrolls when the system says nothing (and Windows' default).
@@ -277,6 +297,9 @@ pub struct TrackpadInput {
     sector: i32,
     click_held: bool,
     click_in_centre: bool,
+    last_frame_at: Option<std::time::Instant>,
+    have_frame_time: bool,
+    last_jump_log: Option<std::time::Instant>,
 }
 
 impl Default for TrackpadInput {
@@ -292,6 +315,9 @@ impl Default for TrackpadInput {
             sector: -1,
             click_held: false,
             click_in_centre: true,
+            last_frame_at: None,
+            have_frame_time: false,
+            last_jump_log: None,
         }
     }
 }
@@ -302,6 +328,26 @@ impl TrackpadInput {
         *self = Self::default();
         self.mode = mode;
         self.diagonals = diagonals;
+    }
+
+    /// Diagnostic only; changes nothing about the movement itself.
+    fn note_jump(&mut self, dx: i32, dy: i32, now: std::time::Instant) -> Option<PadJump> {
+        let dist = (dx as f64).hypot(dy as f64);
+        if dist < JUMP_REPORT_UNITS {
+            self.last_frame_at = Some(now);
+            return None;
+        }
+        let since_ms = match (self.have_frame_time, self.last_frame_at) {
+            (true, Some(t)) => (now - t).as_secs_f64() * 1000.0,
+            _ => -1.0,
+        };
+        self.last_frame_at = Some(now);
+        self.have_frame_time = true;
+        if self.last_jump_log.is_some_and(|t| now - t < JUMP_LOG_GAP) {
+            return None;
+        }
+        self.last_jump_log = Some(now);
+        Some(PadJump { dist, dx, dy, since_ms })
     }
 
     pub fn directions(&self) -> u8 {
@@ -365,6 +411,18 @@ impl TrackpadInput {
         x: i16,
         y: i16,
     ) -> DesktopMotion {
+        self.update_at(s, touching, pressed, x, y, std::time::Instant::now())
+    }
+
+    pub fn update_at(
+        &mut self,
+        s: &PadSettings,
+        touching: bool,
+        pressed: bool,
+        x: i16,
+        y: i16,
+        now: std::time::Instant,
+    ) -> DesktopMotion {
         if s.mode != self.mode {
             self.mode = s.mode;
             self.reset();
@@ -391,6 +449,7 @@ impl TrackpadInput {
         if touching && self.touching {
             let dx = x as i32 - self.prev.0 as i32;
             let dy = y as i32 - self.prev.1 as i32;
+            out.jump = self.note_jump(dx, dy, now);
             if dx != 0 || dy != 0 {
                 if s.mode == PadMode::MousePointer {
                     // Pad Y grows upward, screen Y grows downward.
@@ -731,6 +790,26 @@ mod tests {
     /// Movement ticks as in ReadLoop (0x14001bf85 / 0x14001c088): hypot step,
     /// area > 900 or step > 4000 skipped, steps < 45 ignored, a tick at 6500;
     /// a tick that could not go out (0x14004c2c0 false) keeps 6500 and retries.
+    /// 0x140020ec1: >= 6000 units between touched frames is logged, at most
+    /// once per 3 s; the first jump has no frame time (-1.0).
+    #[test]
+    fn pad_jumps_match_program() {
+        use std::time::{Duration, Instant};
+        let s = PadSettings { mode: PadMode::MousePointer, ..PadSettings::default() };
+        let mut t = TrackpadInput::default();
+        let t0 = Instant::now();
+        assert!(t.update_at(&s, true, false, 0, 0, t0).jump.is_none());
+        assert!(t.update_at(&s, true, false, 5999, 0, t0 + Duration::from_millis(4)).jump.is_none());
+        let j = t.update_at(&s, true, false, 5999, 6000, t0 + Duration::from_millis(8)).jump.unwrap();
+        assert_eq!((j.dx, j.dy, j.dist), (0, 6000, 6000.0));
+        assert_eq!(j.since_ms, -1.0);
+        // Within 3 s: counted, not logged.
+        assert!(t.update_at(&s, true, false, -1, 0, t0 + Duration::from_millis(12)).jump.is_none());
+        let j = t.update_at(&s, true, false, -1, 9000, t0 + Duration::from_millis(3020)).jump.unwrap();
+        assert_eq!(j.dy, 9000);
+        assert!((j.since_ms - 3008.0).abs() < 0.01, "{}", j.since_ms);
+    }
+
     #[test]
     fn pad_ticks_match_program() {
         let mut h = PadHaptics::default();

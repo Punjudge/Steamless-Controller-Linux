@@ -4,6 +4,16 @@ What changed in each release of Steamless Controller for Linux. The release
 build copies the section for its tag into the GitHub release notes, so write
 the next one under a new `## X.Y.Z` heading before tagging.
 
+## 1.25.3
+
+**Event log**
+
+* When a trackpad jumps much further in one frame than a finger can move (6000
+  units, about a fifth of the pad), the log gets a `TRACKPAD:` line with the
+  distance, the time since the previous frame and how hard the pad was touched.
+  At most one line every 3 seconds, as in the Windows original. It helps tell a
+  faulty touch reading apart from lost reports.
+
 ## 1.25.2
 
 **Install and updates**
