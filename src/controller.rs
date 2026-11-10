@@ -23,6 +23,10 @@ const POWER_OFF_GRACE: Duration = Duration::from_secs(3);
 const RELEASE_GRACE: Duration = Duration::from_secs(5);
 const DEVICE_SYNC: Duration = Duration::from_secs(1);
 const PROCESS_SCAN: Duration = Duration::from_secs(2);
+/// TrayApp heartbeat timer (id 4, SetTimer 900000 ms at 0x14000ccf7).
+const HEARTBEAT: Duration = Duration::from_secs(15 * 60);
+/// A beat later than this (0xea600 ms at 0x14000bd87) means the loop was blocked.
+const HEARTBEAT_SLACK: Duration = Duration::from_secs(60);
 /// Less Steam activity must be seen on this many polls in a row before it
 /// counts (SteamWatcher.cpp:10 LESS_STEAM_POLL_COUNT, ~6 s at 2 s polls).
 const LESS_STEAM_POLL_COUNT: u32 = 3;
@@ -158,6 +162,8 @@ struct Engine {
     last_scan: Option<Instant>,
     last_scan_count: u32,
     open_errors: HashMap<PathBuf, String>,
+    started: Instant,
+    last_beat: Instant,
 }
 
 impl Engine {
@@ -178,6 +184,8 @@ impl Engine {
             last_scan: None,
             last_scan_count: 0,
             open_errors: HashMap::new(),
+            started: Instant::now(),
+            last_beat: Instant::now(),
         }
     }
 
@@ -248,9 +256,36 @@ impl Engine {
             }
             self.evaluate_control(now);
             self.publish();
+            if now - self.last_beat >= HEARTBEAT {
+                self.heartbeat(now);
+            }
             std::thread::sleep(Duration::from_millis(100));
         }
         eventlog::write("EXIT");
+    }
+
+    /// TrayApp heartbeat (0x14000b930, timer id 4): a sign of life every 15
+    /// minutes, plus a line when the beat came late. Instant follows the
+    /// monotonic clock, which stands still during suspend like the original's
+    /// unbiased interrupt time, so a closed lid doesn't count as blocked.
+    fn heartbeat(&mut self, now: Instant) {
+        let since = now - self.last_beat;
+        self.last_beat = now;
+        if since > HEARTBEAT + HEARTBEAT_SLACK {
+            eventlog::write(format!(
+                "HEARTBEAT: the loop was blocked for {} s (beat due every {} s)",
+                since.as_secs(), HEARTBEAT.as_secs()));
+        }
+        let live = self.slots.values().any(|s| s.live.load(Ordering::SeqCst));
+        let mode = self.shared.settings.read().unwrap().auto_mode;
+        eventlog::write(heartbeat_line(
+            now - self.started,
+            !self.devices.is_empty(),
+            self.active && live,
+            self.steam,
+            mode,
+            self.want,
+        ));
     }
 
     /// SteamWatcher::PollLoop: more Steam activity (Steam appeared, a game
@@ -559,6 +594,18 @@ fn keepalive(dev: &HidDevice) -> std::io::Result<()> {
 
 /// ReadLoop (0x14001a8f8): after the first failed keepalive, the failure is
 /// logged again only at try 3, 15 and 60 (bit mask 0x1000000000008008).
+/// The heartbeat's "alive" line, fields in the original's order.
+pub fn heartbeat_line(up: Duration, connected: bool, game_mode: bool, steam: SteamState,
+                      mode: AutoMode, want: bool) -> String {
+    let m = up.as_secs() / 60;
+    format!(
+        "HEARTBEAT: alive uptime={}h{:02}m controller={} gameMode={} steam={} (0=none 1=idle 2=inGame) mode={} wantControl={}",
+        m / 60, m % 60,
+        if connected { "connected" } else { "absent" },
+        if game_mode { "on" } else { "off" },
+        steam as i32, mode as i32, want as i32)
+}
+
 pub fn keepalive_report_due(failures: u32) -> bool {
     matches!(failures, 3 | 15 | 60)
 }
@@ -1427,6 +1474,15 @@ mod tests {
     use super::*;
 
     /// Guide / PS Button and PS Touchpad Click as bindable outputs (upstream #121).
+    #[test]
+    fn heartbeat_line_matches_program() {
+        let l = heartbeat_line(Duration::from_secs(3 * 3600 + 7 * 60 + 59), true, false,
+            SteamState::InGame, AutoMode::OffOnlyInGame, true);
+        assert_eq!(l, "HEARTBEAT: alive uptime=3h07m controller=connected gameMode=off steam=2 (0=none 1=idle 2=inGame) mode=2 wantControl=1");
+        assert_eq!(HEARTBEAT.as_millis(), 0xdbba0);
+        assert_eq!((HEARTBEAT + HEARTBEAT_SLACK).as_millis(), 0xea600);
+    }
+
     #[test]
     fn guide_and_touchpad_click_bind() {
         let mut f = PadFrame::default();
