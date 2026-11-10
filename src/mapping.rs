@@ -671,6 +671,17 @@ impl RumbleModel {
 mod tests {
     use super::*;
 
+    /// Stick shaping as in the program (0x14001f9b0 / 0x14001fbe0).
+    #[test]
+    fn sticks_match_program() {
+        assert_eq!(STICK_RAW_MAX * STICK_DEADZONE_PERCENT / 100, 0xA3D);
+        let def = StickSettings { mode: StickMode::Default, ..Default::default() };
+        assert_eq!(apply_stick(2621, 0, &def), (0, 0));
+        assert_eq!(apply_stick(32767, 0, &def), (32767, 0));
+        assert_eq!(stick_square(-32767, 100, 2621, 32767), (-32768, 0));
+        assert_eq!(stick_circle(5, -7, 0, 32767), (5, -7));
+    }
+
     #[test]
     fn wheel_lines_follow_kde() {
         let dir = std::env::temp_dir().join(format!("slc-wheel-{}", std::process::id()));
