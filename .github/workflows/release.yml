@@ -20,6 +20,8 @@ jobs:
       name: ${{ steps.package.outputs.name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # earlier tags, for the "all changes" link
 
       - name: Install build dependencies
         run: |
@@ -41,7 +43,7 @@ jobs:
           if [ "$GITHUB_REF_TYPE" != "tag" ]; then version="dev-${GITHUB_SHA::7}"; fi
           name="steamless-controller-${version}-x86_64-linux"
           mkdir -p "dist/$name"
-          cp target/release/steamless-controller README.md LICENSE MECHANICS.md \
+          cp target/release/steamless-controller README.md CHANGELOG.md LICENSE MECHANICS.md \
              packaging/steamless-controller.desktop packaging/install.sh \
              packaging/udev/70-steamless-controller.rules "dist/$name/"
           chmod +x "dist/$name/install.sh" "dist/$name/steamless-controller"
@@ -54,12 +56,20 @@ jobs:
           name: ${{ steps.package.outputs.name }}
           path: dist/*.tar.gz*
 
+      # A tag is only released when CHANGELOG.md has a section for it.
+      - name: Release notes from CHANGELOG.md
+        if: github.ref_type == 'tag'
+        run: |
+          previous=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          bash packaging/release-notes.sh "${GITHUB_REF_NAME#v}" CHANGELOG.md "$previous" > release-notes.md
+          cat release-notes.md
+
       - name: Publish release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           name: Steamless Controller for Linux ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: release-notes.md
           files: |
             dist/*.tar.gz
             dist/*.tar.gz.sha256

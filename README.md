@@ -82,10 +82,15 @@ Options: `--hidden` (start in the tray), `--page customize`,
 
 ## Making a release
 
-Push a tag such as `v1.25.0` to this branch. GitHub Actions
-(`.github/workflows/release.yml`) builds the program and attaches a ready-to-run
-`.tar.gz` with its SHA-256 to a new release. Every push to the `linux` branch is
-built too, with the result under the workflow run's artifacts.
+1. Raise `version` in `Cargo.toml` and write a `## X.Y.Z` section at the top of
+   `CHANGELOG.md`: what changed, in plain words, for the people using it.
+2. Commit, push, then push a tag such as `v1.25.2` to this branch.
+
+GitHub Actions (`.github/workflows/release.yml`) builds the program and
+publishes a release with the changelog section as its notes (a tag without a
+section is refused), a ready-to-run `.tar.gz` with its SHA-256, and the signed
+pacman package and repository. Every push to the `linux` branch is built too,
+with the result under the workflow run's artifacts.
 
 ## Licence
 
