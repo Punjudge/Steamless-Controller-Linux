@@ -95,9 +95,24 @@ jobs:
           cp "$pkg" steamless-controller-bin-x86_64.pkg.tar.zst
           for f in *.pkg.tar.zst; do sha256sum "$f" > "$f.sha256"; done
 
+      - name: Sign packages and build the pacman repository
+        env:
+          PACMAN_SIGNING_KEY: ${{ secrets.PACMAN_SIGNING_KEY }}
+        run: |
+          # The secret key only ever lives in this container's gpg.
+          printf '%s\n' "$PACMAN_SIGNING_KEY" | gpg --batch --quiet --import
+          bash packaging/arch/sign-repo.sh dist/pkg
+          cp packaging/arch/steamless-controller.asc dist/pkg/
+
       - name: Attach to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/pkg/*.pkg.tar.zst
             dist/pkg/*.pkg.tar.zst.sha256
+            dist/pkg/*.sig
+            dist/pkg/steamless-controller.db
+            dist/pkg/steamless-controller.db.tar.gz
+            dist/pkg/steamless-controller.files
+            dist/pkg/steamless-controller.files.tar.gz
+            dist/pkg/steamless-controller.asc

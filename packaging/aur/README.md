@@ -22,15 +22,22 @@ seat **without Steam or steam-devices**.
 AUR sign-ups are sometimes closed. Until there is an account, a package can
 still reach people:
 
-* **From the release**: every tagged release gets
-  `steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst` plus the same file as
-  `steamless-controller-bin-x86_64.pkg.tar.zst` (built by the `pacman` job in
-  `.github/workflows/release.yml`). The fixed name always resolves to the newest.
-  Download it first, then `sudo pacman -U /path/to/the/file`: pacman refuses an
-  unsigned package given as a URL (`RemoteFileSigLevel = Required`, it asks for
-  `<file>.sig`) but accepts a local one (`LocalFileSigLevel = Optional`). See the
-  main README for the exact lines. pacman does not update it on its own; repeat
-  them for a new release.
+* **From the release (signed repository)**: the `pacman` job in
+  `.github/workflows/release.yml` builds
+  `steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst`, a copy under the fixed
+  name `steamless-controller-bin-x86_64.pkg.tar.zst`, signs both, and with
+  `../arch/sign-repo.sh` makes the repository files `steamless-controller.db`
+  and `.files` (each also as `.tar.gz`, all signed). Everything is attached to
+  the release, so `.../releases/latest/download` works as a pacman `Server`. The
+  main README has the lines for people to trust the key and add the repository.
+  * The signing key's public half is `../arch/steamless-controller.asc`
+    (fingerprint `FC915DEADAFCF2D6E4C547FA50BE4488E96801E4`). The secret half
+    is the repository secret `PACMAN_SIGNING_KEY` in GitHub Actions, with a
+    copy only on the maintainer's computer.
+  * New key (lost or leaked): make one, replace the `.asc` file and the secret,
+    change the fingerprint in the main README, and tell people to
+    `pacman-key --lsign-key` the new one (and `pacman-key --delete` the old).
+    `sign-repo.sh` refuses to sign when the secret does not match the `.asc`.
 * **By hand**: `packaging/arch/make-pkg.sh <release.tar.gz> <version> <dir>`
   builds the same package from a release tarball.
 * **From this folder**: copy `steamless-controller` or

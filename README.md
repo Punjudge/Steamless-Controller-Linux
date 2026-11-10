@@ -20,20 +20,33 @@ Steam's device rules give you both: install `steam-devices` (or `steam`), then
 plug the controller in again. Without Steam, install
 `packaging/udev/70-steamless-controller.rules` to `/usr/lib/udev/rules.d/` instead.
 
-**Arch Linux / CachyOS:** each release also carries a pacman package. Copy
-these two lines as they are; they always fetch the newest release:
+**Arch Linux / CachyOS:** the releases are also a signed pacman repository,
+so `pacman -Syu` keeps the program up to date like any other package.
 
-```sh
-curl -fL -o /tmp/steamless-controller-bin-x86_64.pkg.tar.zst https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst
-sudo pacman -U /tmp/steamless-controller-bin-x86_64.pkg.tar.zst
-```
+1. Trust the signing key once (fingerprint
+   `FC91 5DEA DAFC F2D6 E4C5  47FA 50BE 4488 E968 01E4`):
 
-Download first, then install: given a web address, pacman insists on a
-signature file (`RemoteFileSigLevel = Required`), while a downloaded file only
-needs one if it has it (`LocalFileSigLevel = Optional`). The package isn't
-signed. Run the same two lines again to update. It installs the program, the menu entry and the device rule system-wide, and
-`sudo pacman -R steamless-controller-bin` removes it. To build the package
-yourself, or once it is on the AUR, see `packaging/aur/README.md`.
+   ```sh
+   curl -fL -o /tmp/steamless-controller.asc https://raw.githubusercontent.com/Punjudge/SteamlessController-Linux/linux/packaging/arch/steamless-controller.asc
+   sudo pacman-key --add /tmp/steamless-controller.asc
+   sudo pacman-key --lsign-key FC915DEADAFCF2D6E4C547FA50BE4488E96801E4
+   ```
+
+2. Add the repository to the end of `/etc/pacman.conf`:
+
+   ```ini
+   [steamless-controller]
+   Server = https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download
+   ```
+
+3. Install: `sudo pacman -Syu steamless-controller-bin`
+
+It installs the program, the menu entry and the device rule system-wide, and
+`sudo pacman -R steamless-controller-bin` removes it. With the key trusted, one
+package can also be installed without the repository:
+`sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst`
+(pacman fetches its `.sig` beside it). To build the package yourself, or once
+it is on the AUR, see `packaging/aur/README.md`.
 
 ## What it does
 
