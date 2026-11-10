@@ -1,34 +1,3 @@
-# Build output
-build/
-
-# Loose binaries committed by mistake
-*.exe
-*.dll
-*.lib
-*.pdb
-
-# Claude Code local settings
-.claude/
-
-# Reverse engineering session data
-Results/
-HIDInfo
-HIDReportDescriptor.rtf
-
-# Claude Design files
-ClaudeDesign/
-
-# CMake user files
-CMakeSettings.json
-CMakeUserPresets.json
-
-# Local-only debug tools (not for distribution)
-src/probe/HapticTester.cpp
-
-# Visual Studio
-.vs/
-*.user
-*.suo
-
-# Built installers and packaged output
-Output/
+/target
+/shots
+/dist

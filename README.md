@@ -1,134 +1,53 @@
-# SteamlessController
+# Steamless Controller for Linux
 
-A lightweight Windows system tray app that lets you use a **Steam Controller** as a standard gamepad — without Steam running.
+Use the 2026 Steam Controller (wireless puck, cable or Bluetooth) as a normal
+Xbox 360 or PlayStation-style gamepad, mouse and keyboard on Linux, **without
+Steam running**. A Linux version of
+[SteamlessController](https://github.com/ddeverill/SteamlessController) for
+Windows, rewritten in Rust with an egui window and a system tray icon. Made and
+tested on CachyOS with KDE Plasma (Wayland).
 
-<img width="263" height="154" alt="image" src="https://github.com/user-attachments/assets/7f4a63f6-b700-47dd-aeac-1fa8f78fcd04" />
+## Install
 
-When **Steamless Mode** is active, the app disables the controller's built-in keyboard/mouse emulation (lizard mode) and exposes it as a virtual Xbox 360 controller (or PlayStation controller) via [ViGEmBus](https://github.com/nefarius/ViGEmBus), making it compatible with any game that supports the Xbox or PlayStation controller.
+1. Download `steamless-controller-…-x86_64-linux.tar.gz` from
+   [Releases](https://github.com/Punjudge/SteamlessController-Linux/releases).
+2. Unpack it and run `./install.sh` in the unpacked folder. It puts the program
+   in `~/.local/bin` and adds it to the application menu. `./install.sh --uninstall`
+   removes it again.
 
-## Features
+Your login needs access to the controller (`/dev/hidraw*`) and to `/dev/uinput`.
+Steam's device rules give you both: install `steam-devices` (or `steam`), then
+plug the controller in again.
 
-- Supports all connection modes! Puck, wired, and Bluetooth!
-- Runs alongside Steam! No need to close Steam to toggle modes or force you to use your PC in a weird way.
-- Brand new extensive remapping controls for back buttons and trackpads. Save custom mappings and load them per game!
-- Use a trackpad as a **directional pad** — press its outer edge for a direction and its middle for a button of its own — or as a **single button**. Each direction, the click and a tap are all rebindable.
-- Enable/Disable manually, or use new auto modes to turn on / off when it makes sense.
-- **Steam + Y turns the controller off**, just like it does under Steam (puck and Bluetooth; a controller on a cable is powered by it and stays on).
-- Start on launch, suppress notifications, make this utility your own.
+## What it does
 
-<img width="478" height="373" alt="image" src="https://github.com/user-attachments/assets/171522c4-71a3-46ff-bfa1-d7c5d4b845c6" />
+* Turns off the controller's built-in mouse mode, keeps it off, and turns it back
+  on when the app lets go.
+* Creates a virtual Xbox 360 pad (or a PlayStation-style pad with touchpad), plus
+  a virtual mouse and keyboard, with rumble from games sent back to the controller.
+* Per-game profiles for trackpads, back buttons, two-stage triggers, stick
+  deadzones and rumble strength.
+* Control modes that step aside while Steam or a Steam game is running.
+* Tray menu, start with login, event log, and one-click RetroArch controller
+  profiles.
 
-<img width="770" height="780" alt="image" src="https://github.com/user-attachments/assets/0c4da5c6-6c9f-4748-a8b8-7552e90ad6d9" />
+## Build from source
 
-## Requirements
-
-### To run
-- Windows 10 or later (64-bit)
-- [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases/latest) driver installed
-- Steam Controller — wired USB (PID `0x1302`), wireless dongle (PID `0x1304`), or Bluetooth LE (PID `0x1303`, pair via Windows Bluetooth settings)
-- Steam **closed** (Steam claims the controller when running)
-
-### To build
-- [Visual Studio 2022](https://visualstudio.microsoft.com/) with the **Desktop development with C++** workload
-- [CMake](https://cmake.org/download/) 3.20 or later (included with Visual Studio, or install separately)
-- Windows SDK 10.0.22000 or later (installed via Visual Studio Installer)
-
-## Building
-
-```bat
-git clone https://github.com/your-username/SteamlessController.git
-cd SteamlessController
-cmake -B build
-cmake --build build --target SteamlessController
+```sh
+cargo build --release
+./target/release/steamless-controller
 ```
 
-The executable will be at `build\Debug\SteamlessController.exe`.
+Options: `--hidden` (start in the tray), `--page customize`,
+`--screenshot <file.png>` (draw the window, save it and quit), `--version`.
 
-For a release build:
+## Making a release
 
-```bat
-cmake -B build/release -G "Visual Studio 18 2025"
-cmake --build build/release --config Release --target SteamlessController
-```
+Push a tag such as `v1.25.0` to this branch. GitHub Actions
+(`.github/workflows/release.yml`) builds the program and attaches a ready-to-run
+`.tar.gz` with its SHA-256 to a new release. Every push to the `linux` branch is
+built too, with the result under the workflow run's artifacts.
 
-> If you have Visual Studio 2022, replace `"Visual Studio 18 2025"` with `"Visual Studio 17 2022"`.
+## Licence
 
-## Building the installer
-
-The installer is compiled from `resources\InnoInstallerScript.iss` with [Inno Setup](https://jrsoftware.org/isinfo.php). It needs two things a fresh clone does not have.
-
-**Release builds of all three executables it packages.** The command in the previous section builds only the tray app:
-
-```bat
-cmake --build build/release --config Release --target SteamlessController
-cmake --build build/release --config Release --target SteamlessDeviceCycle
-cmake --build build/release --config Release --target ViGEmBusProbe
-```
-
-`SteamlessDeviceCycle` is the elevated helper that restarts the controller's device node. `ViGEmBusProbe` is how Setup checks whether the driver actually installed, and it stays in the install folder afterwards as a diagnostic.
-
-**The ViGEmBus driver installer**, which is not in this repository — it is a 6 MB vendored binary, and `*.exe` is gitignored. Download it from [ViGEmBus releases](https://github.com/nefarius/ViGEmBus/releases/latest) and place it here:
-
-```
-resources\ViGEmBus_1.22.0_x64_x86_arm64.exe
-```
-
-The filename must match `#define ViGEmSetup` at the top of the script. Inno resolves `[Files]` sources when it compiles, so a missing or differently named payload fails the build outright rather than producing an installer that silently ships no driver. If you update the ViGEmBus version, change the `#define` to match the new filename.
-
-## CMake Targets
-
-| Target | Description |
-|---|---|
-| `SteamlessController` | Main system tray application |
-| `SteamlessDeviceCycle` | Elevated helper that disables and re-enables the controller's device node, run as an on-demand scheduled task. Shipped by the installer. |
-| `ViGEmBusProbe` | Reports whether a ViGEm bus is present by enumerating its interface. Used by Setup to verify the driver installed, and shipped as a diagnostic. |
-| `SteamProbe` | Console diagnostic tool — dumps raw HID report bytes as you interact with the controller. Useful for protocol research. |
-| `RawControllerProbe` | Checks whether `Windows.Gaming.Input.RawGameController` can enumerate the Steam Controller (requires WinRT). |
-| `GameLibraryProbe` | Console diagnostic — lists every application the per-game profile picker can find, with the source each came from and a per-source count. Ask for its output when someone reports that a game is missing from the picker. Given a directory, it instead runs only the Epic manifest reader against it. |
-
-## How it works
-
-The Steam Controller exposes a vendor HID collection (usage page `0xFF00`) that carries all game input in a 54-byte report (ID `0x42`) at ~60 Hz. By default the firmware runs in **lizard mode**, emulating a keyboard and mouse so the controller works without drivers.
-
-SteamlessController sends HID feature reports to disable lizard mode, then reads the raw input reports and translates them into a virtual Xbox 360 controller via ViGEmBus. A background heartbeat re-sends the disable command every 800 ms to keep lizard mode off.
-
-The full input report layout is documented in [`src/steam/SteamController.h`](src/steam/SteamController.h).
-
-### Per-game profiles
-
-A profile can be attached to one game instead of applying everywhere. The game
-is chosen from a picker that draws on several sources at once: both Start Menu
-and both Desktop shortcut folders, the installed MSIX/Store package list, Steam's
-own manifests, and the records kept by the Epic Games Store, GOG Galaxy, Ubisoft
-Connect and Battle.net. Anything none of those know about — a portable build, an
-emulator, an itch.io download — can be added by hand, either by picking it out of
-the applications currently running or by browsing to its `.exe`.
-
-Whichever profile applies is decided by what is in the *foreground*, not by what
-is running: a launcher that stays resident long after the game exits would
-otherwise keep claiming the controller. See
-[`src/app/ForegroundWatcher.h`](src/app/ForegroundWatcher.h) for why, and
-[`src/app/GameLibrary.h`](src/app/GameLibrary.h) for the four shapes a game's
-saved identity can take.
-
-## Third-party
-
-- [ViGEmClient](https://github.com/nefarius/ViGEmClient) — MIT License, built from source as a static library
-
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
-
-Releases are built and signed by the [Release workflow](.github/workflows/release.yml) from this repository's source. Only this project's own executables and installer are signed. The bundled ViGEmBus installer is signed by its own publisher and passes through unchanged.
-
-Team roles:
-
-- Committers and reviewers: [Dylan Deverill](https://github.com/ddeverill)
-- Approvers: [Dylan Deverill](https://github.com/ddeverill)
-
-### Privacy
-
-SteamlessController sends no data about you or your system anywhere. It makes two kinds of network request:
-
-- The controller remapping window loads its fonts from Google Fonts, which receives the usual details of a web request, such as your IP address.
-- If the ViGEmBus driver is missing, clicking the notification that says so opens its download page in your browser.
+MIT, like the original. See `LICENSE`.
