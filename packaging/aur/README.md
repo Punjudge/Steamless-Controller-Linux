@@ -25,9 +25,12 @@ still reach people:
 * **From the release**: every tagged release gets
   `steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst` plus the same file as
   `steamless-controller-bin-x86_64.pkg.tar.zst` (built by the `pacman` job in
-  `.github/workflows/release.yml`). The fixed name always resolves to the newest:
-  `sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst`.
-  pacman does not update it on its own; run the same line again.
+  `.github/workflows/release.yml`). The fixed name always resolves to the newest.
+  Download it first, then `sudo pacman -U /path/to/the/file`: pacman refuses an
+  unsigned package given as a URL (`RemoteFileSigLevel = Required`, it asks for
+  `<file>.sig`) but accepts a local one (`LocalFileSigLevel = Optional`). See the
+  main README for the exact lines. pacman does not update it on its own; repeat
+  them for a new release.
 * **By hand**: `packaging/arch/make-pkg.sh <release.tar.gz> <version> <dir>`
   builds the same package from a release tarball.
 * **From this folder**: copy `steamless-controller` or

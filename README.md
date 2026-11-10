@@ -21,13 +21,17 @@ plug the controller in again. Without Steam, install
 `packaging/udev/70-steamless-controller.rules` to `/usr/lib/udev/rules.d/` instead.
 
 **Arch Linux / CachyOS:** each release also carries a pacman package. Copy
-this line as it is; it always fetches the newest release:
+these two lines as they are; they always fetch the newest release:
 
 ```sh
-sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst
+curl -fL -o /tmp/steamless-controller-bin-x86_64.pkg.tar.zst https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst
+sudo pacman -U /tmp/steamless-controller-bin-x86_64.pkg.tar.zst
 ```
 
-Run the same line again to update. It installs the program, the menu entry and the device rule system-wide, and
+Download first, then install: given a web address, pacman insists on a
+signature file (`RemoteFileSigLevel = Required`), while a downloaded file only
+needs one if it has it (`LocalFileSigLevel = Optional`). The package isn't
+signed. Run the same two lines again to update. It installs the program, the menu entry and the device rule system-wide, and
 `sudo pacman -R steamless-controller-bin` removes it. To build the package
 yourself, or once it is on the AUR, see `packaging/aur/README.md`.
 
