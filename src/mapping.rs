@@ -727,4 +727,34 @@ mod tests {
         assert_eq!(c.directions(), 0);
         assert!(c.click_in_centre());
     }
+
+    /// Movement ticks as in ReadLoop (0x14001bf85 / 0x14001c088): hypot step,
+    /// area > 900 or step > 4000 skipped, steps < 45 ignored, a tick at 6500;
+    /// a tick that could not go out (0x14004c2c0 false) keeps 6500 and retries.
+    #[test]
+    fn pad_ticks_match_program() {
+        let mut h = PadHaptics::default();
+        let mut y: i16 = 0;
+        // Touch down, then sit out the 12-frame touch grace.
+        for _ in 0..=TOUCH_GRACE_FRAMES {
+            assert!(!h.update(true, false, 0, y, 0, true, || true).tick);
+        }
+        // Two 3000-unit steps: 6000, no tick yet.
+        for _ in 0..2 {
+            y += 3000;
+            assert!(!h.update(true, false, 0, y, 0, true, || true).tick);
+        }
+        // A third step reaches 9000; the tick is refused, so 6500 is kept.
+        y += 3000;
+        assert!(!h.update(true, false, 0, y, 0, true, || false).tick);
+        assert_eq!(h.accum, TICK_DISTANCE);
+        // Jitter under 45 does nothing; the next real step sends the tick.
+        assert!(!h.update(true, false, 0, y + 20, 0, true, || true).tick);
+        assert!(h.update(true, false, 0, y + 100, 0, true, || true).tick);
+        assert_eq!(h.accum, 0.0);
+        // A step over 4000 or a wide contact never counts.
+        assert!(!h.update(true, false, 0, y + 4200, 0, true, || true).tick);
+        assert!(!h.update(true, false, 0, y + 7000, 901, true, || true).tick);
+        assert_eq!(h.accum, 0.0);
+    }
 }

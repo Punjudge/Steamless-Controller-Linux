@@ -739,10 +739,14 @@ fn normalize_pad_axis(raw: i16, max: i32, invert: bool) -> i32 {
 }
 
 impl Slot {
-    fn write_out(&mut self, data: &[u8]) {
-        if let Err(e) = self.dev.write_output(data) {
-            if e.kind() != std::io::ErrorKind::WouldBlock {
-                eventlog::write(format!("WRITE: output 0x{:02X} failed: {e}", data[0]));
+    fn write_out(&mut self, data: &[u8]) -> bool {
+        match self.dev.write_output(data) {
+            Ok(_) => true,
+            Err(e) => {
+                if e.kind() != std::io::ErrorKind::WouldBlock {
+                    eventlog::write(format!("WRITE: output 0x{:02X} failed: {e}", data[0]));
+                }
+                false
             }
         }
     }
@@ -753,19 +757,19 @@ impl Slot {
         self.write_out(&p::haptic_command_report(side, p::HAPTIC_COMMAND_CLICK));
     }
 
-    fn pad_tick_allowed(&mut self, left: bool) -> bool {
+    /// TickTrackpadMovement (0x14004c2c0): at most one tick per pad every
+    /// 50 ms (the time is taken before sending); then report 0x82 [side, 1, 0]
+    /// (0x14004bc10). True only when the tick was written, so a skipped or
+    /// failed tick keeps its distance and goes out on a later frame.
+    fn pad_tick(&mut self, left: bool) -> bool {
         let i = if left { 0 } else { 1 };
         let now = Instant::now();
         if self.last_pad_haptic[i].is_some_and(|t| now - t < PAD_HAPTIC_MIN_GAP) {
             return false;
         }
         self.last_pad_haptic[i] = Some(now);
-        true
-    }
-
-    fn pad_tick(&mut self, left: bool) {
         let side = if left { p::HAPTIC_SIDE_LEFT } else { p::HAPTIC_SIDE_RIGHT };
-        self.write_out(&p::haptic_command_report(side, p::HAPTIC_COMMAND_TICK));
+        self.write_out(&p::haptic_command_report(side, p::HAPTIC_COMMAND_TICK))
     }
 
     fn release_held(&mut self, km: &Arc<Mutex<Option<UinputDevice>>>) {
@@ -1104,35 +1108,25 @@ impl Slot {
         if n >= 28 {
             let r_dpad = profile.right_pad.is_dpad();
             let l_dpad = profile.left_pad.is_dpad();
-            if r_dpad && self.prev_dirs[1] != 0 && right_dirs != 0 && self.prev_dirs[1] != right_dirs
-                && self.pad_tick_allowed(false)
-            {
+            if r_dpad && self.prev_dirs[1] != 0 && right_dirs != 0 && self.prev_dirs[1] != right_dirs {
                 self.pad_tick(false);
             }
-            if l_dpad && self.prev_dirs[0] != 0 && left_dirs != 0 && self.prev_dirs[0] != left_dirs
-                && self.pad_tick_allowed(true)
-            {
+            if l_dpad && self.prev_dirs[0] != 0 && left_dirs != 0 && self.prev_dirs[0] != left_dirs {
                 self.pad_tick(true);
             }
             let r_dist = !r_dpad && profile.right_pad.mode != PadMode::SingleButton;
             let l_dist = !l_dpad && profile.left_pad.mode != PadMode::SingleButton;
             let mut rh = std::mem::take(&mut self.right_haptics);
-            let out_r = rh.update(rt_touch, rp, rx, ry, ra, r_dist, || self.pad_tick_allowed(false));
+            let out_r = rh.update(rt_touch, rp, rx, ry, ra, r_dist, || self.pad_tick(false));
             self.right_haptics = rh;
             let mut lh = std::mem::take(&mut self.left_haptics);
-            let out_l = lh.update(lt_touch, lp, lx, ly, la, l_dist, || self.pad_tick_allowed(true));
+            let out_l = lh.update(lt_touch, lp, lx, ly, la, l_dist, || self.pad_tick(true));
             self.left_haptics = lh;
             if out_r.click {
                 self.pad_click(false);
             }
-            if out_r.tick {
-                self.pad_tick(false);
-            }
             if out_l.click {
                 self.pad_click(true);
-            }
-            if out_l.tick {
-                self.pad_tick(true);
             }
         }
 
