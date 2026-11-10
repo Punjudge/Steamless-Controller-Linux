@@ -592,7 +592,10 @@ fn key_repeat() -> (Duration, Duration) {
                 }
             }
         }
-        (Duration::from_millis(delay), Duration::from_secs_f64(1.0 / per_second))
+        // KeyRepeatInterval (0x140021b90): whole milliseconds,
+        // (long)(1000.0 / per_second + 0.5).
+        let interval_ms = (1000.0 / per_second + 0.5) as u64;
+        (Duration::from_millis(delay), Duration::from_millis(interval_ms.max(1)))
     })
 }
 

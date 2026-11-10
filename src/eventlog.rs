@@ -40,12 +40,18 @@ pub fn write(msg: impl AsRef<str>) {
     if let Some(dir) = p.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    // EventLog.cpp:10 kMaxLogBytes = 512 KiB: past it the log moves to
-    // events.old.log (replacing the previous one) and starts fresh.
-    if std::fs::metadata(&p).map(|m| m.len() > MAX_LOG_BYTES).unwrap_or(false) {
+    // EventLog Write (0x1400276b0): append the line, flush, and if the file is
+    // now over 512 KiB (ftell > 0x80000) rotate it (0x1400274e0): it moves to
+    // events.old.log, replacing the previous one, and the next line starts fresh.
+    let size = match std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+        Ok(mut f) => {
+            let _ = writeln!(f, "{}  {}", timestamp(), msg.as_ref());
+            let _ = f.flush();
+            f.metadata().map(|m| m.len()).unwrap_or(0)
+        }
+        Err(_) => return,
+    };
+    if size > MAX_LOG_BYTES {
         let _ = std::fs::rename(&p, p.with_file_name("events.old.log"));
-    }
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
-        let _ = writeln!(f, "{}  {}", timestamp(), msg.as_ref());
     }
 }

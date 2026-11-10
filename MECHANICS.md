@@ -14,8 +14,9 @@ Two sources, which agree:
    **function address** each value was read from (evidence ids in the
    Craft Anything project).
 
-Every value checked in the program matched the source and the Linux build, so no
-value had to change. Values marked *estimated* or *Linux* are not in the original;
+Every value checked in the program matched the source. Two rules were finer in the
+program than in the Linux build and were changed to match: key repeat interval
+rounding and when the event log rotates (marked **changed** below). Values marked *estimated* or *Linux* are not in the original;
 they are my choices for the Linux port.
 
 ### Checked in the compiled program
@@ -35,6 +36,12 @@ they are my choices for the Linux port.
 | Speed curve | `min + round(v^0.68 · (0xFFFF − min))`, min 0x1200 base / 0x2200 boost | `0x14004c660` (UnitToHapticSpeed; exponent at `0x140076a00`) | `unit_to_speed` ✓ |
 | Steam watcher | sleeps 100 ms × 20 = 2 s; more activity at once; the same lower state 3 polls in a row (`2 < count`) | `0x140025000` (PollLoop) | `observe_steam` ✓ |
 | Steam check / liveness timers | 5000 ms, 2000 ms (SetTimer) | `0x14000b90f`, `0x14000edfa` | ✓ |
+| Stick settings load | mode 0/1/2 (else 0); inner default 8, capped at 95; outer default 100, clamped to inner + 5 … 100 | `0x1400043f0` (stick profile load) | `clamp_stick_range` ✓ |
+| Trigger settings load | mode 0/1 (else 0); press default 95, clamped 20 … 100 (limits at `0x140056e58`/`0x140056e5c`); release default 80, clamped 5 (`0x140056e60`) … press − 3 (5 when press < 4); click feel default 2 (Press and release), ≥ 3 → 2 | `0x140004960` (trigger profile load) | `clamp_trigger_press/release` ✓ |
+| Trackpad settings load | mode < 6, scroll direction < 2; scroll speed default 100, clamped 10 … 400 (`0x14000abd9`–`0x14000abf1`) | `0x14000a6e0` (trackpad load); saved by `0x140009ba0` | `sanitize_profile` ✓ |
+| Key repeat delay | SPI_GETKEYBOARDDELAY, setting > 3 or failure → 1; delay = (setting + 1) × 250 ms | `0x140021b40` (KeyRepeatDelay) | fallback 500 ms ✓ |
+| Key repeat interval | SPI_GETKEYBOARDSPEED, > 31 or failure → 31; interval = (long)(1000 / (2.5 + 27.5 × setting / 31) + 0.5) ms, i.e. **whole milliseconds, rounded** | `0x140021b90` (KeyRepeatInterval; doubles at `0x14005aa50`, `0x14005b9a0`…`0x14005b9b0`, `0x14005ad70`) | **changed**: `key_repeat()` now rounds 1000 / rate to whole ms (30/s → 33 ms) instead of an exact fraction |
+| Event log | line `%04u-%02u-%02u %02u:%02u:%02u.%03u` + two spaces + message, flushed; **after** writing, if ftell > 0x80000 (512 KiB) the file is rotated to `events.old.log` (MoveFileEx replace) | `0x1400276b0` (Write), `0x1400274e0` (Rotate) | **changed**: `eventlog::write` now checks the size after writing the line, as the original does, instead of before |
 
 ## Device and protocol (src/steam/SteamController.h / .cpp)
 
