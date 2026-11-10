@@ -20,9 +20,16 @@ Steam's device rules give you both: install `steam-devices` (or `steam`), then
 plug the controller in again. Without Steam, install
 `packaging/udev/70-steamless-controller.rules` to `/usr/lib/udev/rules.d/` instead.
 
-**Arch Linux / CachyOS:** `packaging/aur/` has ready PKGBUILDs (from source, or
-`-bin` from the release) that install the program, the menu entry and the device
-rule system-wide. See `packaging/aur/README.md`.
+**Arch Linux / CachyOS:** each release (from 1.25.1 on) also carries a pacman
+package. Install it straight from GitHub:
+
+```sh
+sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/download/vX.Y.Z/steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst
+```
+
+It installs the program, the menu entry and the device rule system-wide, and
+`sudo pacman -R steamless-controller-bin` removes it. To build the package
+yourself, or once it is on the AUR, see `packaging/aur/README.md`.
 
 ## What it does
 
@@ -36,7 +43,13 @@ rule system-wide. See `packaging/aur/README.md`.
   a virtual mouse and keyboard, with rumble from games sent back to the controller.
 * Per-game profiles for trackpads, back buttons, two-stage triggers, stick
   deadzones and rumble strength.
-* Control modes that step aside while Steam or a Steam game is running.
+* Back buttons, trackpad clicks and directions can also send the **Guide / PS
+  button** or the **PlayStation touchpad click** (asked for upstream in
+  ddeverill/SteamlessController#121).
+* Control modes that step aside while Steam or a Steam game is running. A game
+  profile stays active for as long as its program runs, even when another window
+  is in front (Wayland has no "focused window"). Upstream #100 describes
+  the problem this avoids.
 * Tray menu, start with login, event log, and one-click RetroArch controller
   profiles.
 

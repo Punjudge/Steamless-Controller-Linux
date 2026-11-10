@@ -16,6 +16,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    outputs:
+      name: ${{ steps.package.outputs.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,3 +63,35 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/*.tar.gz.sha256
+
+  # An Arch Linux / CachyOS package for each release, installable with
+  # `sudo pacman -U <url>` without the AUR.
+  pacman:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.name }}
+          path: dist
+
+      - name: Build pacman package
+        env:
+          NAME: ${{ needs.build.outputs.name }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          useradd -m builder
+          chown -R builder "$PWD"
+          su builder -c "bash packaging/arch/make-pkg.sh 'dist/$NAME.tar.gz' '$version' dist/pkg"
+          (cd dist/pkg && sha256sum *.pkg.tar.zst > "$(ls *.pkg.tar.zst).sha256")
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/pkg/*.pkg.tar.zst
+            dist/pkg/*.pkg.tar.zst.sha256

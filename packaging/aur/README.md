@@ -17,6 +17,21 @@ licence and a udev rule (`70-steamless-controller.rules`, the same as
 `../udev/`), so the controller and `/dev/uinput` work for the person at the
 seat **without Steam or steam-devices**.
 
+## Without the AUR
+
+AUR sign-ups are sometimes closed. Until there is an account, a package can
+still reach people:
+
+* **From the release**: every tagged release gets
+  `steamless-controller-bin-X.Y.Z-1-x86_64.pkg.tar.zst` (built by the `pacman`
+  job in `.github/workflows/release.yml`), installable with
+  `sudo pacman -U <its download URL>`. pacman does not update it on its own;
+  install the next release the same way.
+* **By hand**: `packaging/arch/make-pkg.sh <release.tar.gz> <version> <dir>`
+  builds the same package from a release tarball.
+* **From this folder**: copy `steamless-controller` or
+  `steamless-controller-bin` to an empty directory and run `makepkg -si`.
+
 ## Try it locally
 
 Copy one folder to an empty directory and run:

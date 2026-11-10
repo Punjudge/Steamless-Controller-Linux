@@ -701,6 +701,8 @@ fn apply_action(b: Binding, f: &mut PadFrame) {
             Action::View => f.back = true,
             Action::L3 => f.l3 = true,
             Action::R3 => f.r3 = true,
+            Action::Guide => f.guide = true,
+            Action::TouchpadClick => f.touch_click = true,
             _ => {}
         }
     }
@@ -1041,7 +1043,7 @@ impl Slot {
                 if pad.kind == PadKind::PlayStation {
                     let r_feed = profile.right_pad.feeds_ds4();
                     let l_feed = profile.left_pad.feeds_ds4();
-                    let touch_click = (rp && r_feed) || (lp && l_feed);
+                    let touch_click = (rp && r_feed) || (lp && l_feed) || f.touch_click;
                     let t = |down: bool, x: i16, y: i16| Touch {
                         down,
                         x: if down { normalize_pad_axis(x, 1919, false) } else { 0 },
@@ -1385,4 +1387,21 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
     }
     ctx.live.store(false, Ordering::SeqCst);
     ctx.shared.request_repaint();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Guide / PS Button and PS Touchpad Click as bindable outputs (upstream #121).
+    #[test]
+    fn guide_and_touchpad_click_bind() {
+        let mut f = PadFrame::default();
+        apply_action(Binding::Action(Action::Guide), &mut f);
+        apply_action(Binding::Action(Action::TouchpadClick), &mut f);
+        assert!(f.guide && f.touch_click);
+        assert_eq!(Action::Guide.label(true), "PS Button");
+        let json = serde_json::to_string(&Binding::Action(Action::TouchpadClick)).unwrap();
+        assert_eq!(serde_json::from_str::<Binding>(&json).unwrap(), Binding::Action(Action::TouchpadClick));
+    }
 }

@@ -28,6 +28,10 @@ pub enum Action {
     L3,
     R3,
     TouchKeyboard,
+    /// Xbox Guide / PlayStation button (upstream issue #121, PR #145).
+    Guide,
+    /// PlayStation touchpad click; nothing in Xbox mode (upstream #121, #145).
+    TouchpadClick,
 }
 
 impl Action {
@@ -82,6 +86,10 @@ impl Action {
             (Action::L3, _) => "L3",
             (Action::R3, _) => "R3",
             (Action::TouchKeyboard, _) => "On-screen Keyboard",
+            (Action::Guide, false) => "Guide",
+            (Action::Guide, true) => "PS Button",
+            (Action::TouchpadClick, false) => "Touchpad Click (PlayStation only)",
+            (Action::TouchpadClick, true) => "Touchpad Click",
         }
     }
 }

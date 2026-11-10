@@ -950,6 +950,8 @@ impl App {
                     for a in Action::GAMEPAD {
                         item(ui, Binding::Action(a));
                     }
+                    item(ui, Binding::Action(Action::Guide));
+                    item(ui, Binding::Action(Action::TouchpadClick));
                     ui.label(RichText::new("Mouse").size(11.0).color(ACCENT));
                     item(ui, Binding::Action(Action::LeftMouse));
                     item(ui, Binding::Action(Action::RightMouse));

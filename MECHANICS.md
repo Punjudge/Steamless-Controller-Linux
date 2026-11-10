@@ -60,23 +60,22 @@ they are my choices for the Linux port.
 | Rumble loop | after each pass, next wake = now + 40 ms (`0x2625a00` ns) | `0x14004b510` (RumbleLoop) | `RUMBLE_PERIOD` ✓ |
 | Trigger to pad | Xbox 360: trigger = clamp(raw >> 7, 0, 255) (`0x140020267`, `0x1400202a0`); PlayStation the same (`0x140020534`, `0x140020554`) | `0x1400201a3` (Xbox translate), `0x1400203e8` (PlayStation translate) | `controller.rs` ✓ |
 | Settings window | created 760 × 668, scaled by the screen's DPI / 96 (MulDiv); minimum size 560 × 440, also DPI-scaled (WM_GETMINMAXINFO) | `0x1400439e0` (`0x140043da7`), `0x140040b10` (`0x140040c02`) | `main.rs` ✓ (KDE scales the window itself) |
+| Pad press debounce | raw press = contact area ≥ 1800 **or** the firmware click bit (byte 4 bit 0x40 right, byte 5 bit 0x04 left); 2 frames in a row to press (`0x14001b43d`) and 2 to release (`0x14001b450`) | `0x14001a500` (ReadLoop) | `PressState::update` ✓ |
+| Settings load defaults | read from the registry only when a settings key exists (fresh installs keep the profile defaults: left pad scroll, right pad pointer with left click, upper paddles left click, lower paddles none). A missing value then becomes: back buttons `0xE` = None (`0x14000d038`); Rumble 100, capped at 100 (`ebx = 0x64` at `0x14000d277`, `cmova` at `0x14000d5e3`); ShowNotifications 1, any non-zero = on (`0x14000d6ac`) | `0x14000ced0` (settings load); save `0x140011720` | `config.rs` ✓ (Linux always writes the full file, so the missing-value case does not arise) |
+| Trackpad load defaults | missing Mode → 0 (None), kept only if < 6; Click and Touch → `0xE` None; Up/Down/Left/Right → d-pad 8/9/10/11; ScrollDir and Diagonals → 0 (Natural, eight-way), kept only if < 2; ScrollSpeed 0 or missing → 100, else 10 … 400 | `0x14000a6e0` | `PadSettings::default` ✓ |
 | Tick sending | per pad, fewer than 50 000 000 ns since the last tick → not sent; else store the time, then report `0x82 [side, 1, 0]` (side 0 left, 1 right) and return whether the write worked | `0x14004c2c0` (TickTrackpadMovement), `0x14004bc10` (haptic command) | **changed**: `Slot::pad_tick` now sends inside the check and returns whether the write worked, so a failed write keeps the 6500 and retries like the original (before, the sum was cleared even if the write failed) |
 
 ### Not checked in the compiled program
 
-64 of the 73 values in `mechanics.json` carry a program address. The other
-nine, and the parts below, come from the source code only:
+71 of the 73 values in `mechanics.json` carry a program address. The two that
+don't (`profile match on linux`, `steam game detection on linux`) are Linux
+replacements with no counterpart in the program. Parts that were not translated:
 
-* **Defaults that are only data**: which pad does what out of the box, the
-  back buttons, rumble strength 100, notifications on, and pad press frames 2.
-  They sit in the profile and setting defaults, not in code with a fixed
-  constant, and they come from the same source code the program was built from.
-* **Windows-only parts, replaced on Linux** and so not translated: ViGEmBus
-  (now uinput), SendInput (uinput mouse/keyboard), the registry (a JSON file),
-  Start with Windows (XDG autostart), the Windows tray icon (StatusNotifierItem),
-  and choosing a profile by the **foreground window**. Wayland has no
-  foreground-window query, so Linux matches the newest running program instead
-  (`profile match on linux`, `steam game detection on linux`).
+* **Windows-only parts, replaced on Linux**: ViGEmBus (now uinput), SendInput
+  (uinput mouse/keyboard), the registry (a JSON file), Start with Windows (XDG
+  autostart), the Windows tray icon (StatusNotifierItem), and choosing a profile
+  by the **foreground window**. Wayland has no foreground-window query, so Linux
+  matches the newest running program instead.
 * **Drawing the window**: the original is plain Win32 drawing and Linux uses
   egui, so only sizes are taken (see the table above), not pixels.
 * **PlayStation motion (gyro)**: not built, so not looked for.
