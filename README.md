@@ -21,8 +21,12 @@ plug the controller in again.
 
 ## What it does
 
-* Turns off the controller's built-in mouse mode, keeps it off, and turns it back
-  on when the app lets go.
+* Takes over the trackpads and back buttons from the controller's built-in
+  mouse/keyboard mode and does the same job itself, but configurable per game.
+  Out of the box it still works like a mouse: the right trackpad moves the
+  pointer (press to left-click), the left trackpad scrolls, and the upper back
+  buttons left-click. When the app lets go (Steamless Mode off, or the app
+  quits), the controller's own mouse mode comes back.
 * Creates a virtual Xbox 360 pad (or a PlayStation-style pad with touchpad), plus
   a virtual mouse and keyboard, with rumble from games sent back to the controller.
 * Per-game profiles for trackpads, back buttons, two-stage triggers, stick
