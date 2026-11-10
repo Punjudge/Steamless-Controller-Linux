@@ -16,7 +16,8 @@ Two sources, which agree:
 
 Every value checked in the program matched the source. Two rules were finer in the
 program than in the Linux build and were changed to match: key repeat interval
-rounding and when the event log rotates (marked **changed** below). Values marked *estimated* or *Linux* are not in the original;
+rounding and when the event log rotates; and trackpad scrolling now applies the
+program's wheel-lines correction (marked **changed** / **added** below). Values marked *estimated* or *Linux* are not in the original;
 they are my choices for the Linux port.
 
 ### Checked in the compiled program
@@ -41,6 +42,11 @@ they are my choices for the Linux port.
 | Trackpad settings load | mode < 6, scroll direction < 2; scroll speed default 100, clamped 10 … 400 (`0x14000abd9`–`0x14000abf1`) | `0x14000a6e0` (trackpad load); saved by `0x140009ba0` | `sanitize_profile` ✓ |
 | Key repeat delay | SPI_GETKEYBOARDDELAY, setting > 3 or failure → 1; delay = (setting + 1) × 250 ms | `0x140021b40` (KeyRepeatDelay) | fallback 500 ms ✓ |
 | Key repeat interval | SPI_GETKEYBOARDSPEED, > 31 or failure → 31; interval = (long)(1000 / (2.5 + 27.5 × setting / 31) + 0.5) ms, i.e. **whole milliseconds, rounded** | `0x140021b90` (KeyRepeatInterval; doubles at `0x14005aa50`, `0x14005b9a0`…`0x14005b9b0`, `0x14005ad70`) | **changed**: `key_repeat()` now rounds 1000 / rate to whole ms (30/s → 33 ms) instead of an exact fraction |
+| Trackpad pointer | per frame while touched: f = speed/100 × 0.01125 (`0x14005ad64`); x += dx·f, y −= dy·f, whole pixels out (truncated), fraction kept | `0x140020dd0` (TrackpadInput update) | `TrackpadInput::update` ✓ |
+| Trackpad scroll | Natural (setting 0) negates dx, dy; f = speed/100 × (3 / wheel lines) × 0.02 (`0x14005ad68`); vertical = dy·f, horizontal = dx·f, truncated, fraction kept | `0x140020dd0` | **changed**: the wheel-lines factor was missing |
+| Wheel lines | SPI_GETWHEELSCROLLLINES, re-read at most once a second; 0 or failure → 3; page scrolling (−1) → 20 (`0x14005c508`) | `0x1400246e0` | **added** `wheel_correction()`: KDE `WheelScrollLines` in `~/.config/kdeglobals` [KDE], same rules *Linux* |
+| Jump log | a touched-frame move ≥ 6000 units (`0x14005adb0`) is logged as TRACKPAD, at most every 3 s | `0x140020dd0` | log only, not ported |
+| Directional pad | touch starting inside radius 12000 (`0x14005adb8`) stays neutral until release; angle = atan2(y, x)·180/π in 0…360; step 45° (8-way) or 90° (4-way); keep the sector while within step·0.5 + 8° (`0x14005ad88`), else sector = floor((angle + step/2)/step) mod n; sectors → d-pad bits right, up+right, up, up+left, left, down+left, down, down+right | `0x1400212c0` (dpad sector) | `resolve_sector`, `sector_dirs` ✓ |
 | Event log | line `%04u-%02u-%02u %02u:%02u:%02u.%03u` + two spaces + message, flushed; **after** writing, if ftell > 0x80000 (512 KiB) the file is rotated to `events.old.log` (MoveFileEx replace) | `0x1400276b0` (Write), `0x1400274e0` (Rotate) | **changed**: `eventlog::write` now checks the size after writing the line, as the original does, instead of before |
 
 ## Device and protocol (src/steam/SteamController.h / .cpp)

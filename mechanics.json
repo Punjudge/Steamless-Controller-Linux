@@ -1,4 +1,4 @@
-{"version": 1, "program": {"file": "SteamlessController.exe 1.25 x64", "sha256": "2e43ef47cd727f20750307158e74680e9fbd51ea802aa9bdb5acd1f5d49a18b2", "from": "SteamlessController-Setup.exe (Inno Setup 6.7), LZMA2 chunk, call filter undone", "result": "every checked value matches the source; key repeat rounding and log rotation timing changed to match the program"}, "values": [
+{"version": 1, "program": {"file": "SteamlessController.exe 1.25 x64", "sha256": "2e43ef47cd727f20750307158e74680e9fbd51ea802aa9bdb5acd1f5d49a18b2", "from": "SteamlessController-Setup.exe (Inno Setup 6.7), LZMA2 chunk, call filter undone", "result": "every checked value matches the source; key repeat rounding, log rotation timing and the scroll wheel-lines correction changed to match the program"}, "values": [
   {"name": "vendor id", "group": "device", "value": "0x28DE", "source": "src/steam/SteamController.h:12 VALVE_VID"},
   {"name": "product ids", "group": "device", "value": "0x1302 wired, 0x1303 bluetooth, 0x1304 puck, 0x1305 nereid", "source": "src/steam/SteamController.h:13-16 SC2026_*_PID"},
   {"name": "vendor usage page", "group": "device", "value": "0xFF00 usage 1", "source": "src/steam/SteamController.h:25-26 VENDOR_USAGE_PAGE, CONTROLLER_USAGE"},
@@ -32,15 +32,15 @@
   {"name": "trigger release min", "group": "triggers", "value": 5, "unit": "%", "source": "src/app/TriggerConfig.h:87 kTriggerReleaseMin", "address": "0x140004960, limit at 0x140056e60"},
   {"name": "trigger hysteresis min", "group": "triggers", "value": 3, "unit": "%", "source": "src/app/TriggerConfig.h:90 kTriggerHysteresisMin", "address": "0x140004960, release <= press - 3"},
   {"name": "trigger to xbox shift", "group": "triggers", "value": 7, "unit": "bits", "source": "src/app/VirtualController.cpp TranslateX360 raw >> 7"},
-  {"name": "pointer sensitivity", "group": "trackpads", "value": 0.01125, "unit": "px per unit", "source": "src/app/TrackpadInput.h:98 SENSITIVITY; TrackpadInput.cpp:81 UpdatePointer"},
-  {"name": "scroll sensitivity", "group": "trackpads", "value": 0.02, "unit": "wheel units per unit", "source": "src/app/TrackpadInput.h:102 SCROLL_SENSITIVITY; TrackpadInput.cpp:118 ScrollScale"},
+  {"name": "pointer sensitivity", "group": "trackpads", "value": 0.01125, "unit": "px per unit", "source": "src/app/TrackpadInput.h:98 SENSITIVITY; TrackpadInput.cpp:81 UpdatePointer", "address": "0x140020dd0 TrackpadInput update, float 0.01125 at 0x14005ad64"},
+  {"name": "scroll sensitivity", "group": "trackpads", "value": 0.02, "unit": "wheel units per unit", "source": "src/app/TrackpadInput.h:102 SCROLL_SENSITIVITY; TrackpadInput.cpp:118 ScrollScale", "address": "0x140020dd0 TrackpadInput update, float 0.02 at 0x14005ad68, x 3/wheel lines (0x1400246e0)"},
   {"name": "pad speed default", "group": "trackpads", "value": 100, "unit": "%", "source": "src/app/TrackpadConfig.h:102 kScrollSpeedDefault", "address": "0x14000a6e0 trackpad load, 0x64"},
   {"name": "pad speed min", "group": "trackpads", "value": 10, "unit": "%", "source": "src/app/TrackpadConfig.h:103 kScrollSpeedMin", "address": "0x14000a6e0 trackpad load, 0xa at 0x14000abd9"},
   {"name": "pad speed max", "group": "trackpads", "value": 400, "unit": "%", "source": "src/app/TrackpadConfig.h:104 kScrollSpeedMax", "address": "0x14000a6e0 trackpad load, 0x190 at 0x14000abe5"},
-  {"name": "pad ring radius", "group": "trackpads", "value": 12000, "source": "src/app/TrackpadConfig.h:202 kPadRingRadius"},
+  {"name": "pad ring radius", "group": "trackpads", "value": 12000, "source": "src/app/TrackpadConfig.h:202 kPadRingRadius", "address": "0x1400212c0 dpad sector, 12000.0 at 0x14005adb8"},
   {"name": "pad press area", "group": "trackpads", "value": 1800, "source": "src/app/TrackpadConfig.h:239 kPadPressArea", "address": "0x14001a500 ReadLoop, 0x708 at 0x14001b3f3"},
   {"name": "pad press frames", "group": "trackpads", "value": 2, "source": "src/app/TrackpadConfig.h:246 kPadPressFrames"},
-  {"name": "sector hysteresis", "group": "trackpads", "value": 8, "unit": "deg", "source": "src/app/TrackpadInput.h:126 SECTOR_HYSTERESIS_DEG; TrackpadInput.cpp:198 ResolveSector"},
+  {"name": "sector hysteresis", "group": "trackpads", "value": 8, "unit": "deg", "source": "src/app/TrackpadInput.h:126 SECTOR_HYSTERESIS_DEG; TrackpadInput.cpp:198 ResolveSector", "address": "0x1400212c0 dpad sector, 8.0 at 0x14005ad88"},
   {"name": "tap max frames", "group": "trackpads", "value": 50, "source": "src/app/ControllerManager.cpp:130 kTapMaxFrames", "address": "0x14001a500 ReadLoop, 0x32 at 0x14001b5d6"},
   {"name": "tap max travel", "group": "trackpads", "value": 3000, "source": "src/app/ControllerManager.cpp:131 kTapMaxTravel", "address": "0x14001a500 ReadLoop, 0xbb8 at 0x14001b5db"},
   {"name": "tap pulse frames", "group": "trackpads", "value": 12, "source": "src/app/ControllerManager.cpp:132 kTapPulseFrames", "address": "0x14001a500 ReadLoop, 0xc at 0x14001b5e7"},
@@ -70,5 +70,6 @@
   {"name": "click haptic release confirm frames", "group": "haptics", "value": 4, "source": "src/app/ControllerManager.cpp:268 kReleaseConfirmFrames"},
   {"name": "tick idle reset frames", "group": "haptics", "value": 30, "source": "src/app/ControllerManager.cpp:277 kIdleResetFrames"},
   {"name": "post release grace frames", "group": "haptics", "value": 45, "source": "src/app/ControllerManager.cpp:284 kPostReleaseGraceFrames"},
-  {"name": "bindable inputs", "group": "controls", "value": 18, "source": "src/app/ControllerManager.cpp:99 kBindableCount"}
+  {"name": "bindable inputs", "group": "controls", "value": 18, "source": "src/app/ControllerManager.cpp:99 kBindableCount"},
+  {"name": "scroll wheel lines correction", "group": "trackpads", "value": "3 / wheel lines (0 or unreadable -> 3, page -> 20), re-read each second", "source": "program 0x1400246e0 SPI_GETWHEELSCROLLLINES, used by 0x140020dd0; Linux: kdeglobals [KDE] WheelScrollLines", "address": "0x1400246e0"}
 ]}

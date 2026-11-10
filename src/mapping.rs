@@ -185,6 +185,54 @@ pub struct DesktopMotion {
     pub hwheel: i32,
 }
 
+/// Lines one wheel notch scrolls when the system says nothing (and Windows' default).
+const DEFAULT_WHEEL_LINES: f32 = 3.0;
+/// "One screen at a time" counts as this many lines (0x14005c508).
+const PAGE_SCROLL_LINES: f32 = 20.0;
+
+/// Scroll wheel correction (TrackpadInput scroll, 0x140020dd0, with the lines
+/// setting read by 0x1400246e0 and cached for 1 s): factor = 3 / lines, so a
+/// pad swipe scrolls the same distance whatever the desktop's wheel speed is.
+/// lines 0 or unreadable → 3 (factor 1). Linux: KDE's `WheelScrollLines` in
+/// `~/.config/kdeglobals` ([KDE] section), the setting Qt apps scroll by.
+pub fn wheel_correction() -> f32 {
+    use std::sync::Mutex;
+    use std::time::Instant;
+    static CACHE: Mutex<Option<(Instant, f32)>> = Mutex::new(None);
+    let mut c = CACHE.lock().unwrap();
+    if let Some((at, v)) = *c {
+        if at.elapsed() < Duration::from_secs(1) {
+            return v;
+        }
+    }
+    let lines = wheel_lines_from(&dirs::config_dir().unwrap_or_default().join("kdeglobals"));
+    let v = DEFAULT_WHEEL_LINES / lines;
+    *c = Some((Instant::now(), v));
+    v
+}
+
+fn wheel_lines_from(path: &std::path::Path) -> f32 {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return DEFAULT_WHEEL_LINES;
+    };
+    let mut in_kde = false;
+    for l in text.lines() {
+        let l = l.trim();
+        if l.starts_with('[') {
+            in_kde = l == "[KDE]";
+        } else if in_kde {
+            if let Some(v) = l.strip_prefix("WheelScrollLines=") {
+                return match v.trim().parse::<i64>() {
+                    Ok(-1) => PAGE_SCROLL_LINES,
+                    Ok(n) if n > 0 => n as f32,
+                    _ => DEFAULT_WHEEL_LINES,
+                };
+            }
+        }
+    }
+    DEFAULT_WHEEL_LINES
+}
+
 fn angle_delta(a: f64, b: f64) -> f64 {
     let d = (a - b).abs() % 360.0;
     if d > 180.0 {
@@ -360,7 +408,7 @@ impl TrackpadInput {
                         sx = -sx;
                         sy = -sy;
                     }
-                    let scale = SCROLL_SENSITIVITY * speed;
+                    let scale = SCROLL_SENSITIVITY * speed * wheel_correction();
                     let fy = sy as f32 * scale + self.scroll_rem.1;
                     let fx = sx as f32 * scale + self.scroll_rem.0;
                     let iy = fy.trunc();
@@ -622,6 +670,21 @@ impl RumbleModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wheel_lines_follow_kde() {
+        let dir = std::env::temp_dir().join(format!("slc-wheel-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("kdeglobals");
+        std::fs::write(&f, "[General]\nWheelScrollLines=9\n[KDE]\nWheelScrollLines=6\n").unwrap();
+        assert_eq!(wheel_lines_from(&f), 6.0);
+        std::fs::write(&f, "[KDE]\nWheelScrollLines=-1\n").unwrap();
+        assert_eq!(wheel_lines_from(&f), PAGE_SCROLL_LINES);
+        std::fs::write(&f, "[KDE]\nWheelScrollLines=0\n").unwrap();
+        assert_eq!(wheel_lines_from(&f), DEFAULT_WHEEL_LINES);
+        assert_eq!(wheel_lines_from(&dir.join("missing")), DEFAULT_WHEEL_LINES);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn default_deadzone_cuts_rest_offset() {
