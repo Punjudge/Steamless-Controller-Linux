@@ -3,7 +3,7 @@
 
 pkgname=steamless-controller-bin
 _pkgname=steamless-controller
-pkgver=1.25.0
+pkgver=1.25.1
 pkgrel=1
 pkgdesc="Use the 2026 Steam Controller as a normal gamepad, mouse and keyboard without Steam (prebuilt)"
 arch=('x86_64')
@@ -19,7 +19,7 @@ options=('!strip' '!debug')
 _dist="$_pkgname-$pkgver-x86_64-linux"
 source=("$url/releases/download/v$pkgver/$_dist.tar.gz"
         '70-steamless-controller.rules')
-sha256sums=('f28684729dafb9588df814b5138ea4c895eaeaecfe8279905138f8b52d324252'
+sha256sums=('ed88edd4bfe26e140cab84d53eff146062f317506baa192696a70f2708c3cdd5'
             '38df8e36eeaf0430f4397b7f8825a5150552ab014d4d2b8e47825e015b2c6369')
 
 package() {
