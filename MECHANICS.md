@@ -52,7 +52,38 @@ they are my choices for the Linux port.
 | Control decision | want = Manual: the switch; Off while Steam: Steam state = none; Off only in game: Steam state ≠ in game; Off unless profile: a profile is active. Not wanted while on: the two Steam modes release at once, the profile mode starts a 5000 ms timer (id 5) first; wanted while off: turn on, waiting up to 250 ms for each slot's first state report | `0x14000b7e0` (control decision, logs `CONTROL: want=…`) | `want_control_now`, `evaluate_control` ✓ (Linux turns a slot on at its first state report, with no 250 ms limit) |
 | Event log | line `%04u-%02u-%02u %02u:%02u:%02u.%03u` + two spaces + message, flushed; **after** writing, if ftell > 0x80000 (512 KiB) the file is rotated to `events.old.log` (MoveFileEx replace) | `0x1400276b0` (Write), `0x1400274e0` (Rotate) | **changed**: `eventlog::write` now checks the size after writing the line, as the original does, instead of before |
 | Trackpad movement ticks | float limits in `.rdata`: deadzone 45.0 (`0x14005aa68`), max area 900.0 (`0x14005aa6c`), max step 4000.0 (`0x14005aa70`), tick distance 6500.0 (`0x14005aa74`). Only when the pad wants distance (mode ≠ 4 directional pad, ≠ 5 single button), touched this and last frame, not pressed, click latch idle, touch grace over. step = hypot(dx, dy) from the stored position; post-release grace > 0, area > 900 or step > 4000 → just store the position; step < 45 → idle + 1, and only at 30 idle frames is the sum cleared and the position stored (smaller moves keep measuring from the old point); else idle = 0, sum += step, sum ≥ 6500 → tick: sent → sum = 0, not sent → sum = 6500 (retried next frame) | `0x14001a500` (ReadLoop, right pad `0x14001bf85`, left pad `0x14001c088`) | `PadHaptics::update` ✓ |
+| Device search | for each PID in {0x1302, 0x1303, 0x1304, 0x1305} (array `0x13031302`, `0x13051304`): enumerate HID with VID 0x28DE, usage page 0xFF00, usage 1 | `0x14004aff0` (enumerate, helper `0x14004cc40`) | `hid.rs` ✓ |
+| Power off | stop rumble (SetRumble 0, 0), then feature report 64 bytes `[01 9F 04 'o' 'f' 'f' '!']` (`'off!'` at `0x1400769a0`) | `0x14004b2d0` (PowerOff) | `controller.rs` Steam + Y ✓ |
+| Click haptics | press confirmed after ≥ 2 frames (`0x14001bcc2`), release after ≥ 4 (`0x14001bcff`); on release: post-release grace 45 frames (`0x14001bd1a` right, `0x14001bdb2` left); both reset the tick position and sum; touch starts a 12-frame grace (`0x14001be1a`, `0x14001be49`) | `0x14001a500` (ReadLoop) | `PadHaptics::update` ✓ |
+| Bindable inputs | the binding loop runs over 18 inputs (`cmp r15,0x12` at `0x14001cbe5`) | `0x14001a500` | `BINDABLE` ✓ |
+| Trigger click buzz | per side: fewer than 40 ms (`≤ 0x26259ff` ns) since the last → ignored; else store the time, buzz until now + 60 ms (`0x3938700` ns), and **wake the rumble loop at once** (condition variable) | `0x14004b400` (QueueTriggerClick) | `queue_trigger_click` ✓; **changed**: the buzz is now sent the same frame instead of on the next 40 ms rumble turn |
+| Rumble loop | after each pass, next wake = now + 40 ms (`0x2625a00` ns) | `0x14004b510` (RumbleLoop) | `RUMBLE_PERIOD` ✓ |
+| Trigger to pad | Xbox 360: trigger = clamp(raw >> 7, 0, 255) (`0x140020267`, `0x1400202a0`); PlayStation the same (`0x140020534`, `0x140020554`) | `0x1400201a3` (Xbox translate), `0x1400203e8` (PlayStation translate) | `controller.rs` ✓ |
+| Settings window | created 760 × 668, scaled by the screen's DPI / 96 (MulDiv); minimum size 560 × 440, also DPI-scaled (WM_GETMINMAXINFO) | `0x1400439e0` (`0x140043da7`), `0x140040b10` (`0x140040c02`) | `main.rs` ✓ (KDE scales the window itself) |
 | Tick sending | per pad, fewer than 50 000 000 ns since the last tick → not sent; else store the time, then report `0x82 [side, 1, 0]` (side 0 left, 1 right) and return whether the write worked | `0x14004c2c0` (TickTrackpadMovement), `0x14004bc10` (haptic command) | **changed**: `Slot::pad_tick` now sends inside the check and returns whether the write worked, so a failed write keeps the 6500 and retries like the original (before, the sum was cleared even if the write failed) |
+
+### Not checked in the compiled program
+
+64 of the 73 values in `mechanics.json` carry a program address. The other
+nine, and the parts below, come from the source code only:
+
+* **Defaults that are only data**: which pad does what out of the box, the
+  back buttons, rumble strength 100, notifications on, and pad press frames 2.
+  They sit in the profile and setting defaults, not in code with a fixed
+  constant, and they come from the same source code the program was built from.
+* **Windows-only parts, replaced on Linux** and so not translated: ViGEmBus
+  (now uinput), SendInput (uinput mouse/keyboard), the registry (a JSON file),
+  Start with Windows (XDG autostart), the Windows tray icon (StatusNotifierItem),
+  and choosing a profile by the **foreground window**. Wayland has no
+  foreground-window query, so Linux matches the newest running program instead
+  (`profile match on linux`, `steam game detection on linux`).
+* **Drawing the window**: the original is plain Win32 drawing and Linux uses
+  egui, so only sizes are taken (see the table above), not pixels.
+* **PlayStation motion (gyro)**: not built, so not looked for.
+
+Whether games see the PlayStation-style pad as a DS4, and how well profile
+matching by program works, needs a controller in hand. Decompiling more won't
+answer either.
 
 ## Device and protocol (src/steam/SteamController.h / .cpp)
 

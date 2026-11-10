@@ -859,6 +859,9 @@ impl Slot {
                 return;
             }
         }
+        // A new trigger click wakes the rumble loop at once (0x14004b400 signals
+        // its condition variable) instead of waiting for the next 40 ms turn.
+        let kicked = self.pending_click.iter().any(|&c| c);
         for side in 0..2 {
             if self.pending_click[side] {
                 self.pending_click[side] = false;
@@ -868,7 +871,7 @@ impl Slot {
         }
         let due = self.last_rumble_sent.is_none_or(|t| now - t >= RUMBLE_PERIOD);
         let buzz_ending = self.rumble.buzz_until.iter().any(|b| b.is_some_and(|t| t <= now && now - t < RUMBLE_PERIOD));
-        if !due && !buzz_ending {
+        if !due && !buzz_ending && !kicked {
             return;
         }
         let (l, r) = self.rumble.frame(now);
