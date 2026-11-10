@@ -557,6 +557,20 @@ fn keepalive(dev: &HidDevice) -> std::io::Result<()> {
     send_feature(dev, p::CMD_SET_SETTINGS, &p::pads_raw_payload())
 }
 
+/// ReadLoop (0x14001a8f8): after the first failed keepalive, the failure is
+/// logged again only at try 3, 15 and 60 (bit mask 0x1000000000008008).
+pub fn keepalive_report_due(failures: u32) -> bool {
+    matches!(failures, 3 | 15 | 60)
+}
+
+/// What the read loop has seen since the first failed keepalive, for the log.
+struct KeepaliveWatch {
+    failures: u32,
+    state_reports: u32,
+    other_reports: u32,
+    last_state: Instant,
+}
+
 fn lizard_on(dev: &HidDevice) -> std::io::Result<()> {
     send_feature(dev, p::CMD_SET_DEFAULT_MAPPINGS, &[])?;
     send_feature(dev, p::CMD_LOAD_DEFAULT_SETTINGS, &[])
@@ -1251,7 +1265,7 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
     let mut last_keepalive = Instant::now();
     let mut last_report = Instant::now();
     let mut stalled = false;
-    let mut keepalive_failing = false;
+    let mut ka = KeepaliveWatch { failures: 0, state_reports: 0, other_reports: 0, last_state: Instant::now() };
     let mut logged_shape = false;
     let mut buf = [0u8; 64];
 
@@ -1259,17 +1273,30 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
         let profile = ctx.shared.current_profile();
         if live && last_keepalive.elapsed() >= KEEPALIVE {
             last_keepalive = Instant::now();
+            // ReadLoop 0x14001a737 … 0x14001ab4c: count failures, log the first
+            // (and what the controller still sends) and again at 3, 15 and 60
+            // tries; log the recovery with the count and start over.
             match keepalive(&slot.dev) {
                 Ok(()) => {
-                    if keepalive_failing {
-                        eventlog::write("KEEPALIVE: recovered");
-                        keepalive_failing = false;
+                    if ka.failures > 0 {
+                        eventlog::write(format!("KEEPALIVE: recovered after {} failed tries", ka.failures));
+                        ka.failures = 0;
                     }
                 }
                 Err(e) => {
-                    if !keepalive_failing {
-                        eventlog::write(format!("KEEPALIVE: send failed: {e}"));
-                        keepalive_failing = true;
+                    ka.failures += 1;
+                    if ka.failures == 1 {
+                        ka.state_reports = 0;
+                        ka.other_reports = 0;
+                        eventlog::write(format!("KEEPALIVE: send failed (device write error: {e})"));
+                    } else if keepalive_report_due(ka.failures) {
+                        eventlog::write(format!(
+                            "KEEPALIVE: still failing after {} tries ({e}) — since the first failure {} state report(s) and {} other report(s) arrived, the last state report {:.1}s ago",
+                            ka.failures,
+                            ka.state_reports,
+                            ka.other_reports,
+                            ka.last_state.elapsed().as_secs_f64()
+                        ));
                     }
                 }
             }
@@ -1297,6 +1324,12 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
                         eventlog::write("STALL: reports resumed");
                     }
                     let r = &buf[..n];
+                    if p::is_state_report(r[0]) {
+                        ka.last_state = Instant::now();
+                        ka.state_reports += (ka.failures > 0) as u32;
+                    } else {
+                        ka.other_reports += (ka.failures > 0) as u32;
+                    }
                     if r[0] == p::REPORT_BATTERY_STATUS && n >= 3 {
                         let pct = r[2] as i32;
                         let old = ctx.shared.live.battery.swap(pct, Ordering::Relaxed);
@@ -1397,6 +1430,8 @@ mod tests {
     #[test]
     fn guide_and_touchpad_click_bind() {
         let mut f = PadFrame::default();
+        assert!(keepalive_report_due(3) && keepalive_report_due(15) && keepalive_report_due(60));
+        assert!(!keepalive_report_due(1) && !keepalive_report_due(2) && !keepalive_report_due(61));
         apply_action(Binding::Action(Action::Guide), &mut f);
         apply_action(Binding::Action(Action::TouchpadClick), &mut f);
         assert!(f.guide && f.touch_click);

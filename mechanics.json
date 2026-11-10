@@ -5,6 +5,7 @@
   {"name": "feature report size", "group": "protocol", "value": 64, "unit": "bytes", "source": "src/steam/SteamController.h:52 FEATURE_REPORT_CMD; BuildCmd 64-byte buffer", "address": "0x14004ab40 (64-byte buffers to 0x14004d5e0 -> HidD_SetFeature)"},
   {"name": "lizard off command", "group": "protocol", "value": "0x81 then 0x87 {0x30,0,0} then 0x87 {0x08,0,0,0x07,0,0}", "source": "src/steam/SteamController.cpp:215 DisableLizardMode", "address": "0x14004ab40 DisableLizardMode"},
   {"name": "lizard on command", "group": "protocol", "value": "0x85 then 0x8E", "source": "src/steam/SteamController.cpp:300 EnableLizardMode", "address": "0x14004ada0 EnableLizardMode"},
+  {"name": "keepalive failure log tries", "group": "device", "value": "3, 15, 60", "source": "src/app/ControllerManager.cpp:1425-1434 keepalive failure logging", "address": "0x14001a500 ReadLoop, cmp 0x3c + bt 0x1000000000008008 at 0x14001a8f8"},
   {"name": "keepalive interval", "group": "protocol", "value": 2, "unit": "s", "source": "src/app/ControllerManager.cpp:1414 ReadLoop seconds(2)", "address": "0x14001a500 ReadLoop, cmp 0x77359400 ns at 0x14001a727"},
   {"name": "power off command", "group": "protocol", "value": "0x9F 'off!'", "source": "src/steam/SteamController.cpp:279 PowerOff, :284 kOff", "address": "0x14004b2d0 PowerOff, [01 9F 04 'off!'] ('off!' at 0x1400769a0)"},
   {"name": "power off grace", "group": "protocol", "value": 3, "unit": "s", "source": "src/app/ControllerManager.cpp:1578 kPowerOffGrace", "address": "0x14001a500 ReadLoop, 0xb2d05dff ns at 0x14001b30b"},
