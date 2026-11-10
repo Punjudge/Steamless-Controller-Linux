@@ -17,7 +17,12 @@ tested on CachyOS with KDE Plasma (Wayland).
 
 Your login needs access to the controller (`/dev/hidraw*`) and to `/dev/uinput`.
 Steam's device rules give you both: install `steam-devices` (or `steam`), then
-plug the controller in again.
+plug the controller in again. Without Steam, install
+`packaging/udev/70-steamless-controller.rules` to `/usr/lib/udev/rules.d/` instead.
+
+**Arch Linux / CachyOS:** `packaging/aur/` has ready PKGBUILDs (from source, or
+`-bin` from the release) that install the program, the menu entry and the device
+rule system-wide. See `packaging/aur/README.md`.
 
 ## What it does
 

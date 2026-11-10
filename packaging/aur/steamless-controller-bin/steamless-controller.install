@@ -1,0 +1,9 @@
+post_install() {
+  echo ">> Steamless Controller: plug the controller (or its wireless puck) in again"
+  echo ">> so the new device rules apply, then start it from the application menu."
+  echo ">> If Steam is running too, pick a Control Mode that steps aside for Steam."
+}
+
+post_upgrade() {
+  :
+}

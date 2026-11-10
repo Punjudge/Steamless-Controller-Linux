@@ -1,0 +1,11 @@
+# Steamless Controller: let the person logged in at the seat read the Steam
+# Controller (Valve, 28de) and create the virtual gamepad, mouse and keyboard.
+# The same rules as Steam's own (steam-devices), limited to what the app needs,
+# so it works without Steam installed. Plug the controller in again afterwards.
+
+# Controller and wireless puck over USB.
+KERNEL=="hidraw*", ATTRS{idVendor}=="28de", MODE="0660", TAG+="uaccess"
+# Controller over Bluetooth and other buses (bus 0003 USB, 0005 Bluetooth, 0006).
+SUBSYSTEM=="hidraw", KERNELS=="000[356]:28DE:*", MODE="0660", TAG+="uaccess"
+# Virtual Xbox 360 / PlayStation pad, mouse and keyboard.
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"

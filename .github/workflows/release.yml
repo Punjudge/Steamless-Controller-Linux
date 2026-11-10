@@ -40,7 +40,8 @@ jobs:
           name="steamless-controller-${version}-x86_64-linux"
           mkdir -p "dist/$name"
           cp target/release/steamless-controller README.md LICENSE MECHANICS.md \
-             packaging/steamless-controller.desktop packaging/install.sh "dist/$name/"
+             packaging/steamless-controller.desktop packaging/install.sh \
+             packaging/udev/70-steamless-controller.rules "dist/$name/"
           chmod +x "dist/$name/install.sh" "dist/$name/steamless-controller"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")

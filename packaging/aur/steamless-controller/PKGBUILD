@@ -1,0 +1,56 @@
+# Maintainer: Punjudge <https://github.com/Punjudge>
+# Builds the program from the tagged source on GitHub.
+
+pkgname=steamless-controller
+pkgver=1.25.0
+pkgrel=1
+pkgdesc="Use the 2026 Steam Controller as a normal gamepad, mouse and keyboard without Steam"
+arch=('x86_64')
+url="https://github.com/Punjudge/SteamlessController-Linux"
+license=('MIT')
+depends=('gcc-libs' 'glibc' 'libglvnd' 'libxkbcommon' 'libxkbcommon-x11' 'wayland'
+         'libx11' 'libxcursor' 'libxi' 'libxrandr')
+makedepends=('cargo')
+optdepends=('xdg-utils: open the event log and web links from the app')
+conflicts=('steamless-controller-bin')
+install=steamless-controller.install
+options=('!lto')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        '70-steamless-controller.rules')
+sha256sums=('cd15002a5e6704152a76b57538faf5899eca311ea2c3cd644badea4b009ce3b6'
+            '38df8e36eeaf0430f4397b7f8825a5150552ab014d4d2b8e47825e015b2c6369')
+
+_srcdir() {
+  echo "$srcdir/SteamlessController-Linux-$pkgver"
+}
+
+prepare() {
+  cd "$(_srcdir)"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$(_srcdir)"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$(_srcdir)"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo test --frozen --release
+}
+
+package() {
+  cd "$(_srcdir)"
+  install -Dm755 target/release/steamless-controller "$pkgdir/usr/bin/steamless-controller"
+  install -Dm644 packaging/steamless-controller.desktop \
+    "$pkgdir/usr/share/applications/steamless-controller.desktop"
+  install -Dm644 "$srcdir/70-steamless-controller.rules" \
+    "$pkgdir/usr/lib/udev/rules.d/70-steamless-controller.rules"
+  install -Dm644 README.md MECHANICS.md -t "$pkgdir/usr/share/doc/$pkgname/"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

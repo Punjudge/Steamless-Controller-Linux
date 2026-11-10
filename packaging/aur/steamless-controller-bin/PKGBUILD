@@ -1,0 +1,34 @@
+# Maintainer: Punjudge <https://github.com/Punjudge>
+# Repackages the ready-built program from the GitHub release (no compiling).
+
+pkgname=steamless-controller-bin
+_pkgname=steamless-controller
+pkgver=1.25.0
+pkgrel=1
+pkgdesc="Use the 2026 Steam Controller as a normal gamepad, mouse and keyboard without Steam (prebuilt)"
+arch=('x86_64')
+url="https://github.com/Punjudge/SteamlessController-Linux"
+license=('MIT')
+depends=('gcc-libs' 'glibc' 'libglvnd' 'libxkbcommon' 'libxkbcommon-x11' 'wayland'
+         'libx11' 'libxcursor' 'libxi' 'libxrandr')
+optdepends=('xdg-utils: open the event log and web links from the app')
+provides=('steamless-controller')
+conflicts=('steamless-controller')
+install=steamless-controller.install
+options=('!strip' '!debug')
+_dist="$_pkgname-$pkgver-x86_64-linux"
+source=("$url/releases/download/v$pkgver/$_dist.tar.gz"
+        '70-steamless-controller.rules')
+sha256sums=('f28684729dafb9588df814b5138ea4c895eaeaecfe8279905138f8b52d324252'
+            '38df8e36eeaf0430f4397b7f8825a5150552ab014d4d2b8e47825e015b2c6369')
+
+package() {
+  cd "$srcdir/$_dist"
+  install -Dm755 steamless-controller "$pkgdir/usr/bin/steamless-controller"
+  install -Dm644 steamless-controller.desktop \
+    "$pkgdir/usr/share/applications/steamless-controller.desktop"
+  install -Dm644 "$srcdir/70-steamless-controller.rules" \
+    "$pkgdir/usr/lib/udev/rules.d/70-steamless-controller.rules"
+  install -Dm644 README.md MECHANICS.md -t "$pkgdir/usr/share/doc/$_pkgname/"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
