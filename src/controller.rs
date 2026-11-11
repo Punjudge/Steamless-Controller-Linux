@@ -73,6 +73,10 @@ pub struct Shared {
     pub commands: Mutex<Vec<Command>>,
     pub repaint: Mutex<Option<Box<dyn Fn() + Send>>>,
     pub show_window: AtomicBool,
+    /// The "virtual gamepad unavailable" notice went out (TrayApp's
+    /// m_vigemBalloonShown): once per failure, until a pad comes up or the
+    /// controller is released.
+    pub pad_warned: AtomicBool,
     pub quit: AtomicBool,
     /// Watch only: never take the controller (the screenshot self-test).
     pub passive: AtomicBool,
@@ -96,6 +100,7 @@ impl Shared {
             commands: Mutex::new(Vec::new()),
             repaint: Mutex::new(None),
             show_window: AtomicBool::new(false),
+            pad_warned: AtomicBool::new(false),
             quit: AtomicBool::new(false),
             passive: AtomicBool::new(false),
             profile: RwLock::new(profile),
@@ -119,6 +124,19 @@ impl Shared {
     fn current_profile(&self) -> Arc<Profile> {
         self.profile.read().unwrap().clone()
     }
+}
+
+/// TrayApp::UpdateTrayIcon's balloon (0x140013230): shown only with
+/// notifications on, and only once until the flag is cleared.
+fn pad_unavailable_notice(shared: &Shared) {
+    if !shared.settings.read().unwrap().notifications {
+        return;
+    }
+    if shared.pad_warned.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    notify(shared, "Virtual gamepad unavailable",
+        "The virtual controller could not be created. Your login needs access to /dev/uinput (Steam's device rules or the input group). The event log has the details.");
 }
 
 pub fn notify(shared: &Shared, title: &str, body: &str) {
@@ -407,6 +425,8 @@ impl Engine {
     }
 
     fn release_all(&mut self) {
+        // ReleaseControl re-arms the notice, so turning it on again says it again.
+        self.shared.pad_warned.store(false, Ordering::SeqCst);
         let had = !self.slots.is_empty();
         for (_, mut s) in self.slots.drain() {
             s.running.store(false, Ordering::SeqCst);
@@ -1036,6 +1056,7 @@ impl Slot {
                 Ok(pad) => {
                     eventlog::write(format!("PAD: virtual {want_kind:?} controller connected"));
                     shared.status.lock().unwrap().pad_error = None;
+                    shared.pad_warned.store(false, Ordering::SeqCst);
                     self.pad = Some(pad);
                 }
                 Err(e) => {
@@ -1045,6 +1066,8 @@ impl Slot {
                         eventlog::write(format!("PAD: {msg}"));
                         st.pad_error = Some(msg);
                     }
+                    drop(st);
+                    pad_unavailable_notice(shared);
                 }
             }
         }

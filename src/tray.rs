@@ -2,13 +2,33 @@
 //! it), with the original tray's items.
 
 use crate::config::AutoMode;
-use crate::controller::{Command, Shared};
+use crate::controller::{Command, Shared, Status};
 use crate::desktop;
 use crate::eventlog;
 use ksni::menu::{CheckmarkItem, MenuItem, RadioGroup, RadioItem, StandardItem, SubMenu};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
+
+/// Icon and tooltip, as TrayApp::UpdateTrayIcon (0x140013230) picks them:
+/// sharing with Steam (game mode on while Steam also holds the controller),
+/// then on, then no virtual gamepad, then connected, then nothing found.
+pub fn tray_look(st: &Status) -> (&'static str, &'static str) {
+    let shared = st.game_mode && st.others_holding.iter().any(|h| h.contains("steam"));
+    let icon = if st.game_mode { "input-gaming" } else { "input-gaming-symbolic" };
+    let tip = if shared {
+        "Steamless Mode ON (sharing with Steam)"
+    } else if st.game_mode {
+        "Steamless Mode ON"
+    } else if st.pad_error.is_some() {
+        "No virtual gamepad (/dev/uinput)"
+    } else if st.connected {
+        "Connected (Steamless Mode OFF)"
+    } else {
+        "No controller found"
+    };
+    (icon, tip)
+}
 
 pub struct Tray {
     shared: Arc<Shared>,
@@ -29,14 +49,7 @@ impl ksni::Tray for Tray {
     }
 
     fn icon_name(&self) -> String {
-        let st = self.shared.status();
-        if st.game_mode {
-            "input-gaming".into()
-        } else if st.connected {
-            "input-gaming-symbolic".into()
-        } else {
-            "input-gaming-symbolic".into()
-        }
+        tray_look(&self.shared.status()).0.into()
     }
 
     /// Always Active. The original's icon never leaves the tray; it only swaps
@@ -48,18 +61,11 @@ impl ksni::Tray for Tray {
     }
 
     fn tool_tip(&self) -> ksni::ToolTip {
-        let st = self.shared.status();
-        let text = if st.game_mode {
-            "Steamless Mode ON"
-        } else if st.connected {
-            "Connected (Steamless Mode OFF)"
-        } else {
-            "No controller found"
-        };
+        let (icon, text) = tray_look(&self.shared.status());
         ksni::ToolTip {
             title: "Steamless Controller".into(),
             description: text.into(),
-            icon_name: "input-gaming".into(),
+            icon_name: icon.into(),
             icon_pixmap: Vec::new(),
         }
     }
@@ -224,5 +230,20 @@ mod tests {
             tray.shared.status.lock().unwrap().game_mode = on;
             assert!(matches!(tray.status(), ksni::Status::Active), "game_mode={on}");
         }
+    }
+
+    /// The tooltip order of 0x140013230.
+    #[test]
+    fn tooltip_order_matches_program() {
+        let mut st = Status::default();
+        assert_eq!(tray_look(&st).1, "No controller found");
+        st.connected = true;
+        assert_eq!(tray_look(&st).1, "Connected (Steamless Mode OFF)");
+        st.pad_error = Some("no access".into());
+        assert_eq!(tray_look(&st).1, "No virtual gamepad (/dev/uinput)");
+        st.game_mode = true;
+        assert_eq!(tray_look(&st), ("input-gaming", "Steamless Mode ON"));
+        st.others_holding = vec!["steam (pid 1)".into()];
+        assert_eq!(tray_look(&st).1, "Steamless Mode ON (sharing with Steam)");
     }
 }

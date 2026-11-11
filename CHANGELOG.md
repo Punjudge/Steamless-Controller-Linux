@@ -4,6 +4,16 @@ What changed in each release of Steamless Controller for Linux. The release
 build copies the section for its tag into the GitHub release notes, so write
 the next one under a new `## X.Y.Z` heading before tagging.
 
+## 1.25.4
+
+**Tray**
+
+* The tray tooltip says when Steam is reading the controller at the same time
+  ("sharing with Steam"), and when the virtual gamepad could not be made
+  ("No virtual gamepad"), in the same order as the Windows original.
+* If the virtual gamepad can't be created, a notification says so once (when
+  notifications are on), instead of only the window and the log knowing.
+
 ## 1.25.3
 
 **Fixed**
