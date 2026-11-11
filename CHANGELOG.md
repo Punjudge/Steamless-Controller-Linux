@@ -9,6 +9,12 @@ and start a new, empty **Unreleased** above it.
 
 ## Unreleased
 
+**Event log**
+
+* When the program decides whether to take the controller, the log line now
+  has the same form and numbers as the Windows original (`CONTROL:`, `AUTO:`,
+  `MODE:`), so logs from both can be compared side by side.
+
 ## 1.25.4
 
 **Controller connection**

@@ -182,6 +182,7 @@ struct Engine {
     open_errors: HashMap<PathBuf, String>,
     started: Instant,
     last_beat: Instant,
+    last_control_line: Option<String>,
 }
 
 impl Engine {
@@ -204,6 +205,7 @@ impl Engine {
             open_errors: HashMap::new(),
             started: Instant::now(),
             last_beat: Instant::now(),
+            last_control_line: None,
         }
     }
 
@@ -236,7 +238,7 @@ impl Engine {
                         let mut s = self.shared.settings.write().unwrap();
                         s.auto_mode = m;
                         s.save();
-                        eventlog::write(format!("AUTO: mode set to {m:?}"));
+                        eventlog::write(mode_line(m));
                     }
                     Command::SettingsChanged => {}
                     Command::Quit => quit = true,
@@ -316,6 +318,7 @@ impl Engine {
             self.steam = now;
             self.steam_pending = now;
             eventlog::write(format!("STEAM: state {now:?}"));
+            self.steam_applied(now);
             return;
         }
         if now == self.steam {
@@ -326,6 +329,7 @@ impl Engine {
             self.steam = now;
             self.steam_pending_polls = 0;
             eventlog::write(format!("STEAM: state {now:?}"));
+            self.steam_applied(now);
         } else if now != self.steam_pending {
             self.steam_pending = now;
             self.steam_pending_polls = 1;
@@ -335,7 +339,17 @@ impl Engine {
                 self.steam = now;
                 self.steam_pending_polls = 0;
                 eventlog::write(format!("STEAM: state {now:?}"));
+                self.steam_applied(now);
             }
+        }
+    }
+
+    /// TrayApp's Steam-state handler (0x14000b160): only an automatic mode
+    /// (mode != 0) logs the new state; the decision itself is re-run by the
+    /// engine loop right after.
+    fn steam_applied(&self, now: SteamState) {
+        if self.shared.settings.read().unwrap().auto_mode != AutoMode::Manual {
+            eventlog::write(format!("AUTO: steam state {} (0=none 1=idle 2=inGame)", now as i32));
         }
     }
 
@@ -375,11 +389,16 @@ impl Engine {
 
     fn evaluate_control(&mut self, now: Instant) {
         let want = self.want_control_now();
+        // 0x14000b7e0 logs every evaluation; this loop re-evaluates every
+        // 100 ms, so the same line is written only when one of its fields changes.
+        let mode = self.shared.settings.read().unwrap().auto_mode;
+        let line = control_line(want, mode, self.steam, self.active_game.as_deref());
+        if self.last_control_line.as_deref() != Some(line.as_str()) {
+            eventlog::write(line.clone());
+            self.last_control_line = Some(line);
+        }
         if want {
             self.release_at = None;
-            if !self.want {
-                eventlog::write(format!("CONTROL: want=1 (steam={:?} profile={:?})", self.steam, self.active_game));
-            }
             self.want = true;
             if !self.active {
                 self.acquire();
@@ -389,7 +408,6 @@ impl Engine {
         if !self.want {
             return;
         }
-        let mode = self.shared.settings.read().unwrap().auto_mode;
         let yielding_to_steam = matches!(mode, AutoMode::OffWhileSteam | AutoMode::OffOnlyInGame);
         if mode == AutoMode::Manual || yielding_to_steam {
             self.want = false;
@@ -636,6 +654,17 @@ fn keepalive(dev: &HidDevice) -> std::io::Result<()> {
 
 /// ReadLoop (0x14001a8f8): after the first failed keepalive, the failure is
 /// logged again only at try 3, 15 and 60 (bit mask 0x1000000000008008).
+/// TrayApp::SetAutoMode's line (menu handlers 0x14000c1a5-0x14000c264).
+pub fn mode_line(m: AutoMode) -> String {
+    format!("MODE: control mode set to {} (0=manual 1=offWhileSteam 2=offOnlyInGame 3=offUnlessProfile)", m as i32)
+}
+
+/// The decision line of 0x14000b7e0.
+pub fn control_line(want: bool, mode: AutoMode, steam: SteamState, profile: Option<&str>) -> String {
+    format!("CONTROL: want={} (mode={} steam={} profile={})",
+        want as i32, mode as i32, steam as i32, profile.unwrap_or("none"))
+}
+
 /// The heartbeat's "alive" line, fields in the original's order.
 pub fn heartbeat_line(up: Duration, connected: bool, game_mode: bool, steam: SteamState,
                       mode: AutoMode, want: bool) -> String {
@@ -1560,6 +1589,17 @@ mod tests {
         assert!(disconnect_advice(Transport::Bluetooth).contains("Steam button"));
         assert!(disconnect_advice(Transport::Dongle).contains("USB"));
         assert!(disconnect_advice(Transport::Wired).contains("USB"));
+    }
+
+    /// The log lines of 0x14000b7e0, 0x14000b160 and SetAutoMode.
+    #[test]
+    fn control_lines_match_program() {
+        assert_eq!(control_line(true, AutoMode::OffOnlyInGame, SteamState::Idle, None),
+            "CONTROL: want=1 (mode=2 steam=1 profile=none)");
+        assert_eq!(control_line(false, AutoMode::OffUnlessProfile, SteamState::NoSteam, Some("game.exe")),
+            "CONTROL: want=0 (mode=3 steam=0 profile=game.exe)");
+        assert_eq!(mode_line(AutoMode::OffWhileSteam),
+            "MODE: control mode set to 1 (0=manual 1=offWhileSteam 2=offOnlyInGame 3=offUnlessProfile)");
     }
 
     #[test]
