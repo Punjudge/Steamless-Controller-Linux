@@ -34,9 +34,12 @@ seat needs access to both:
 
 ## Making a release
 
-1. Raise `version` in `Cargo.toml` and write a `## X.Y.Z` section at the top of
-   `CHANGELOG.md`: what changed, in plain words, for the people using it.
-2. Commit, push to `main`, then push a tag such as `v1.25.4`.
+While working, note each change under `## Unreleased` in `CHANGELOG.md`, in
+plain words for the people using it. Gather several before releasing.
+
+1. Raise `version` in `Cargo.toml`. In `CHANGELOG.md`, rename `## Unreleased`
+   to `## X.Y.Z` and add a new, empty `## Unreleased` above it.
+2. Commit, push to `main`, then push a tag such as `v1.25.5`.
 
 GitHub Actions (`.github/workflows/release.yml`) then:
 

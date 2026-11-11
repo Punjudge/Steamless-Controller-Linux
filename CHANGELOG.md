@@ -1,8 +1,13 @@
 # Changelog
 
 What changed in each release of Steamless Controller for Linux. The release
-build copies the section for its tag into the GitHub release notes, so write
-the next one under a new `## X.Y.Z` heading before tagging.
+build copies the section for its tag into the GitHub release notes.
+
+Changes are collected under **Unreleased** as they are made, and several go out
+together. When releasing, rename that heading to the new version (`## X.Y.Z`)
+and start a new, empty **Unreleased** above it.
+
+## Unreleased
 
 ## 1.25.4
 
