@@ -2,7 +2,7 @@
 # Builds the program from the tagged source on GitHub.
 
 pkgname=steamless-controller
-pkgver=1.25.2
+pkgver=1.25.4
 pkgrel=1
 pkgdesc="Use the 2026 Steam Controller as a normal gamepad, mouse and keyboard without Steam"
 arch=('x86_64')
@@ -17,7 +17,7 @@ install=steamless-controller.install
 options=('!lto')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
         '70-steamless-controller.rules')
-sha256sums=('cf1d77a818538be9c969c4c6c7eae930e3c165021a83a48577ff611d7036b7e0'
+sha256sums=('9995c3757b8e3fdd5fc7f14af6a1275794bcde4f63452c99984a5149d49800dd'
             '38df8e36eeaf0430f4397b7f8825a5150552ab014d4d2b8e47825e015b2c6369')
 
 _srcdir() {

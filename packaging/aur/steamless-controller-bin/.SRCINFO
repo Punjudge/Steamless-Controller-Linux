@@ -1,6 +1,6 @@
 pkgbase = steamless-controller-bin
 	pkgdesc = Use the 2026 Steam Controller as a normal gamepad, mouse and keyboard without Steam (prebuilt)
-	pkgver = 1.25.2
+	pkgver = 1.25.4
 	pkgrel = 1
 	url = https://github.com/Punjudge/Steamless-Controller-Linux
 	install = steamless-controller.install
@@ -21,9 +21,9 @@ pkgbase = steamless-controller-bin
 	conflicts = steamless-controller
 	options = !strip
 	options = !debug
-	source = https://github.com/Punjudge/Steamless-Controller-Linux/releases/download/v1.25.2/steamless-controller-1.25.2-x86_64-linux.tar.gz
+	source = https://github.com/Punjudge/Steamless-Controller-Linux/releases/download/v1.25.4/steamless-controller-1.25.4-x86_64-linux.tar.gz
 	source = 70-steamless-controller.rules
-	sha256sums = c1fcece048ebe932187215d48ed90023b6ad8cdd8122fe9cafd0f18b9d78d9b7
+	sha256sums = 62ba7fa47c406b78cd137ab574bbd5595fb6cf99b92ece5f7cfb28cfb1a98a6c
 	sha256sums = 38df8e36eeaf0430f4397b7f8825a5150552ab014d4d2b8e47825e015b2c6369
 
 pkgname = steamless-controller-bin
