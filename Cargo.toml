@@ -1,6 +1,6 @@
 [package]
 name = "steamless-controller"
-version = "1.25.2"
+version = "1.25.3"
 edition = "2021"
 description = "Use a Steam Controller as a standard gamepad on Linux without Steam"
 license = "MIT"

@@ -6,6 +6,12 @@ the next one under a new `## X.Y.Z` heading before tagging.
 
 ## 1.25.3
 
+**Fixed**
+
+* The tray icon stayed hidden while Steamless Mode was off, so a closed window
+  could only be quit from the system monitor (#1). The icon now always shows,
+  as in the Windows original, and only its picture changes.
+
 **Event log**
 
 * When a trackpad jumps much further in one frame than a finger can move (6000

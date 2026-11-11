@@ -39,8 +39,12 @@ impl ksni::Tray for Tray {
         }
     }
 
+    /// Always Active. The original's icon never leaves the tray; it only swaps
+    /// between the on and off pictures (TrayApp::UpdateTrayIcon, NIM_MODIFY with
+    /// NIF_ICON). Passive made KDE Plasma hide the icon while Steamless Mode was
+    /// off, leaving no way to reach or quit a hidden window (issue #1).
     fn status(&self) -> ksni::Status {
-        if self.shared.status().game_mode { ksni::Status::Active } else { ksni::Status::Passive }
+        ksni::Status::Active
     }
 
     fn tool_tip(&self) -> ksni::ToolTip {
@@ -205,4 +209,20 @@ pub fn spawn(shared: Arc<Shared>) -> bool {
             handle.shutdown().wait();
         })
         .is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Settings;
+    use ksni::Tray as _;
+
+    #[test]
+    fn icon_stays_visible_when_steamless_mode_is_off() {
+        let tray = Tray { shared: Shared::new(Settings::default()) };
+        for on in [false, true] {
+            tray.shared.status.lock().unwrap().game_mode = on;
+            assert!(matches!(tray.status(), ksni::Status::Active), "game_mode={on}");
+        }
+    }
 }
