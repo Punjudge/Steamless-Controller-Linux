@@ -136,6 +136,16 @@ impl Transport {
             _ => Transport::Unknown,
         }
     }
+    /// SteamController::TransportName (0x14004c630), the name in log lines.
+    pub fn log_name(self) -> &'static str {
+        match self {
+            Transport::Wired => "wired",
+            Transport::Dongle => "dongle",
+            Transport::Bluetooth => "bluetooth",
+            Transport::Unknown => "unknown",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Transport::Wired => "USB cable",

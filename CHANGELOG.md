@@ -6,6 +6,14 @@ the next one under a new `## X.Y.Z` heading before tagging.
 
 ## 1.25.4
 
+**Controller connection**
+
+* If the controller disappears while Steamless Mode is using it, a notification
+  says so, with advice for Bluetooth (press the Steam button) or for a cable or
+  puck (check it, USB power saving).
+* The event log says more when input stops or the controller disappears: last
+  battery level, how long since the last report, and how it was connected.
+
 **Tray**
 
 * The tray tooltip says when Steam is reading the controller at the same time

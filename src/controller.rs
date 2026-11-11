@@ -597,6 +597,28 @@ struct Slot {
     wheel_acc: (i32, i32),
 }
 
+/// ControllerManager's device-gone path (0x14001dce0): log the transport,
+/// whether the slot was in game mode and the last battery level; when it was
+/// in game mode and no power-off was asked for, say so in a notification,
+/// with advice for Bluetooth (transport 3) or for a cable/puck.
+fn disconnect_notice(ctx: &SlotCtx, transport: Transport, game_mode: bool, powering_off: bool) {
+    eventlog::write(format!(
+        "DISCONNECT: OS removed device (transport={}, gameMode={}, lastBattery={}%) {}",
+        transport.log_name(), game_mode as i32,
+        ctx.shared.live.battery.load(Ordering::Relaxed), ctx.info.dev_path.display()));
+    if game_mode && !powering_off {
+        notify(&ctx.shared, "Controller disconnected", disconnect_advice(transport));
+    }
+}
+
+pub fn disconnect_advice(transport: Transport) -> &'static str {
+    if transport == Transport::Bluetooth {
+        "The Bluetooth link was lost: the controller turned off, fell asleep or moved out of range. Press the Steam button to connect again."
+    } else {
+        "The controller's USB device went away. Check the cable or the puck; if it keeps happening, USB power saving (autosuspend) may be switching the port off."
+    }
+}
+
 fn send_feature(dev: &HidDevice, cmd: u8, payload: &[u8]) -> std::io::Result<()> {
     dev.send_feature(&p::build_cmd(cmd, payload))
 }
@@ -1346,6 +1368,7 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
     let mut stalled = false;
     let mut ka = KeepaliveWatch { failures: 0, state_reports: 0, other_reports: 0, last_state: Instant::now() };
     let mut logged_shape = false;
+    let mut removed = false;
     let mut buf = [0u8; 64];
 
     while ctx.running.load(Ordering::SeqCst) {
@@ -1388,7 +1411,7 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
         let timeout = if slot.driving || slot.pending_click.iter().any(|c| *c) { 10 } else { 32 };
         unsafe { libc::poll(fds.as_mut_ptr(), fds.len() as libc::nfds_t, timeout) };
         if fds[0].revents & (libc::POLLERR | libc::POLLHUP | libc::POLLNVAL) != 0 {
-            eventlog::write(format!("DISCONNECT: {} closed by the system", ctx.info.dev_path.display()));
+            removed = true;
             break;
         }
 
@@ -1451,6 +1474,7 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
                 }
                 Err(e) => {
                     eventlog::write(format!("READ: {} failed: {e}", ctx.info.dev_path.display()));
+                    removed = true;
                     gone = true;
                     break;
                 }
@@ -1472,7 +1496,14 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
 
         if live && !stalled && last_report.elapsed() > STALL {
             stalled = true;
-            eventlog::write("STALL: no reports for 4s");
+            // ReadLoop 0x14001acb9: battery, age of the last state report and
+            // the last read error. On Linux a read error ends the slot, so a
+            // running slot always has 0 there.
+            eventlog::write(format!(
+                "STALL: no reports for 4s (lastBattery={}%, last state report {:.1}s ago, read error 0) {}",
+                ctx.shared.live.battery.load(Ordering::Relaxed),
+                ka.last_state.elapsed().as_secs_f64(),
+                ctx.info.dev_path.display()));
             if slot.power_off_at.is_none() {
                 let pct = ctx.shared.live.battery.load(Ordering::Relaxed);
                 let body = if pct >= 0 {
@@ -1483,6 +1514,10 @@ fn read_loop(dev: HidDevice, ctx: SlotCtx) {
                 notify(&ctx.shared, "Controller not responding", &body);
             }
         }
+    }
+
+    if removed {
+        disconnect_notice(&ctx, transport, live, slot.power_off_at.is_some());
     }
 
     // Leaving: let go of everything and give the controller its lizard mode back.
@@ -1513,6 +1548,18 @@ mod tests {
         assert_eq!(l, "HEARTBEAT: alive uptime=3h07m controller=connected gameMode=off steam=2 (0=none 1=idle 2=inGame) mode=2 wantControl=1");
         assert_eq!(HEARTBEAT.as_millis(), 0xdbba0);
         assert_eq!((HEARTBEAT + HEARTBEAT_SLACK).as_millis(), 0xea600);
+    }
+
+    /// 0x14004c630 names and the transport-3 (Bluetooth) branch of 0x14001dce0.
+    #[test]
+    fn disconnect_names_match_program() {
+        assert_eq!(Transport::Wired.log_name(), "wired");
+        assert_eq!(Transport::Dongle.log_name(), "dongle");
+        assert_eq!(Transport::Bluetooth.log_name(), "bluetooth");
+        assert_eq!(Transport::Unknown.log_name(), "unknown");
+        assert!(disconnect_advice(Transport::Bluetooth).contains("Steam button"));
+        assert!(disconnect_advice(Transport::Dongle).contains("USB"));
+        assert!(disconnect_advice(Transport::Wired).contains("USB"));
     }
 
     #[test]
