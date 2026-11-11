@@ -32,7 +32,7 @@ cat <<EOF
 
 * **Arch Linux / CachyOS:** \`sudo pacman -Syu steamless-controller-bin\` once the
   \`[steamless-controller]\` repository is set up (see
-  [Install]($repo/tree/linux#install)).
+  [Install]($repo/tree/main#install)).
 * **Other distributions:** download \`steamless-controller-$version-x86_64-linux.tar.gz\`
   below, unpack it and run \`./install.sh\`.
 EOF

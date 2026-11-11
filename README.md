@@ -27,7 +27,7 @@ so `pacman -Syu` keeps the program up to date like any other package.
    `FC91 5DEA DAFC F2D6 E4C5  47FA 50BE 4488 E968 01E4`):
 
    ```sh
-   curl -fL -o /tmp/steamless-controller.asc https://raw.githubusercontent.com/Punjudge/SteamlessController-Linux/linux/packaging/arch/steamless-controller.asc
+   curl -fL -o /tmp/steamless-controller.asc https://raw.githubusercontent.com/Punjudge/SteamlessController-Linux/main/packaging/arch/steamless-controller.asc
    sudo pacman-key --add /tmp/steamless-controller.asc
    sudo pacman-key --lsign-key FC915DEADAFCF2D6E4C547FA50BE4488E96801E4
    ```
@@ -89,7 +89,7 @@ Options: `--hidden` (start in the tray), `--page customize`,
 GitHub Actions (`.github/workflows/release.yml`) builds the program and
 publishes a release with the changelog section as its notes (a tag without a
 section is refused), a ready-to-run `.tar.gz` with its SHA-256, and the signed
-pacman package and repository. Every push to the `linux` branch is built too,
+pacman package and repository. Every push to the `main` branch is built too,
 with the result under the workflow run's artifacts.
 
 ## Licence

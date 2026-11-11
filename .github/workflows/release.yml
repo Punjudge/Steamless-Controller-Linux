@@ -1,13 +1,13 @@
-# Builds the Linux app on every push to the linux branch, and publishes a
+# Builds the Linux app on every push to the main branch, and publishes a
 # GitHub Release with a ready-to-run download when a tag like v1.25.0 is pushed.
 name: Linux build and release
 
 on:
   push:
-    branches: [linux]
+    branches: [main]
     tags: ["v*"]
   pull_request:
-    branches: [linux]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
