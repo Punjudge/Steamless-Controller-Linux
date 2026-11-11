@@ -1,96 +1,91 @@
 # Steamless Controller for Linux
 
-Use the 2026 Steam Controller (wireless puck, cable or Bluetooth) as a normal
-Xbox 360 or PlayStation-style gamepad, mouse and keyboard on Linux, **without
-Steam running**. A Linux version of
+Play with the 2026 Steam Controller on Linux **without Steam running**. Games
+see an ordinary Xbox or PlayStation controller, and the trackpads work as a
+mouse on the desktop. It works with the wireless puck, a cable or Bluetooth.
+
+This is a Linux version of
 [SteamlessController](https://github.com/ddeverill/SteamlessController) for
-Windows, rewritten in Rust with an egui window and a system tray icon. Made and
-tested on CachyOS with KDE Plasma (Wayland).
+Windows. It is made and tested on CachyOS with KDE Plasma.
 
-## Install
+## Install on CachyOS or Arch Linux
 
-1. Download `steamless-controller-…-x86_64-linux.tar.gz` from
-   [Releases](https://github.com/Punjudge/SteamlessController-Linux/releases).
-2. Unpack it and run `./install.sh` in the unpacked folder. It puts the program
-   in `~/.local/bin` and adds it to the application menu. `./install.sh --uninstall`
-   removes it again.
+You do this once. Afterwards the program updates along with the rest of the
+system.
 
-Your login needs access to the controller (`/dev/hidraw*`) and to `/dev/uinput`.
-Steam's device rules give you both: install `steam-devices` (or `steam`), then
-plug the controller in again. Without Steam, install
-`packaging/udev/70-steamless-controller.rules` to `/usr/lib/udev/rules.d/` instead.
-
-**Arch Linux / CachyOS:** the releases are also a signed pacman repository,
-so `pacman -Syu` keeps the program up to date like any other package.
-
-1. Trust the signing key once (fingerprint
-   `FC91 5DEA DAFC F2D6 E4C5  47FA 50BE 4488 E968 01E4`):
-
-   ```sh
-   curl -fL -o /tmp/steamless-controller.asc https://raw.githubusercontent.com/Punjudge/SteamlessController-Linux/main/packaging/arch/steamless-controller.asc
-   sudo pacman-key --add /tmp/steamless-controller.asc
-   sudo pacman-key --lsign-key FC915DEADAFCF2D6E4C547FA50BE4488E96801E4
-   ```
-
-2. Add the repository to the end of `/etc/pacman.conf`:
-
-   ```ini
-   [steamless-controller]
-   Server = https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download
-   ```
-
-3. Install: `sudo pacman -Syu steamless-controller-bin`
-
-It installs the program, the menu entry and the device rule system-wide, and
-`sudo pacman -R steamless-controller-bin` removes it. With the key trusted, one
-package can also be installed without the repository:
-`sudo pacman -U https://github.com/Punjudge/SteamlessController-Linux/releases/latest/download/steamless-controller-bin-x86_64.pkg.tar.zst`
-(pacman fetches its `.sig` beside it). To build the package yourself, or once
-it is on the AUR, see `packaging/aur/README.md`.
-
-## What it does
-
-* Takes over the trackpads and back buttons from the controller's built-in
-  mouse/keyboard mode and does the same job itself, but configurable per game.
-  Out of the box it still works like a mouse: the right trackpad moves the
-  pointer (press to left-click), the left trackpad scrolls, and the upper back
-  buttons left-click. When the app lets go (Steamless Mode off, or the app
-  quits), the controller's own mouse mode comes back.
-* Creates a virtual Xbox 360 pad (or a PlayStation-style pad with touchpad), plus
-  a virtual mouse and keyboard, with rumble from games sent back to the controller.
-* Per-game profiles for trackpads, back buttons, two-stage triggers, stick
-  deadzones and rumble strength.
-* Back buttons, trackpad clicks and directions can also send the **Guide / PS
-  button** or the **PlayStation touchpad click** (asked for upstream in
-  ddeverill/SteamlessController#121).
-* Control modes that step aside while Steam or a Steam game is running. A game
-  profile stays active for as long as its program runs, even when another window
-  is in front (Wayland has no "focused window"). Upstream #100 describes
-  the problem this avoids.
-* Tray menu, start with login, event log, and one-click RetroArch controller
-  profiles.
-
-## Build from source
+**1. Trust the program's signature.** Open a terminal and paste these three
+lines:
 
 ```sh
-cargo build --release
-./target/release/steamless-controller
+curl -fL -o /tmp/steamless-controller.asc https://raw.githubusercontent.com/Punjudge/Steamless-Controller-Linux/main/packaging/arch/steamless-controller.asc
+sudo pacman-key --add /tmp/steamless-controller.asc
+sudo pacman-key --lsign-key FC915DEADAFCF2D6E4C547FA50BE4488E96801E4
 ```
 
-Options: `--hidden` (start in the tray), `--page customize`,
-`--screenshot <file.png>` (draw the window, save it and quit), `--version`.
+**2. Tell pacman where to find it.** Open the file with
+`sudo nano /etc/pacman.conf` and add these two lines at the very end:
 
-## Making a release
+```ini
+[steamless-controller]
+Server = https://github.com/Punjudge/Steamless-Controller-Linux/releases/latest/download
+```
 
-1. Raise `version` in `Cargo.toml` and write a `## X.Y.Z` section at the top of
-   `CHANGELOG.md`: what changed, in plain words, for the people using it.
-2. Commit, push, then push a tag such as `v1.25.2` to this branch.
+**3. Install it:**
 
-GitHub Actions (`.github/workflows/release.yml`) builds the program and
-publishes a release with the changelog section as its notes (a tag without a
-section is refused), a ready-to-run `.tar.gz` with its SHA-256, and the signed
-pacman package and repository. Every push to the `main` branch is built too,
-with the result under the workflow run's artifacts.
+```sh
+sudo pacman -Syu steamless-controller-bin
+```
+
+Then unplug and plug in the controller (or its puck) once. You'll find
+**Steamless Controller** in the application menu.
+
+From now on, `sudo pacman -Syu` (or your usual system update) also updates
+Steamless Controller. To remove it: `sudo pacman -R steamless-controller-bin`.
+
+## Install on other Linux systems
+
+1. Download the newest `steamless-controller-…-x86_64-linux.tar.gz` from
+   [Releases](https://github.com/Punjudge/Steamless-Controller-Linux/releases).
+2. Unpack it, open the folder in a terminal and run `./install.sh`. The program
+   appears in the application menu. `./install.sh --uninstall` removes it.
+3. If Steam is installed, you're done. Without Steam, also install the device
+   rule from the download as described in [the developer notes](https://github.com/Punjudge/Steamless-Controller-Linux/blob/main/docs/DEVELOPING.md#device-access).
+
+## Using it
+
+* Turn **Steamless Mode** on in the window or from the tray icon. While it is
+  on, games see a normal controller.
+* The trackpads work as a mouse right away: the right pad moves the pointer
+  (press it to click) and the left pad scrolls.
+* Under **Customize Controls** you choose what the trackpads, back buttons and
+  triggers do, and you can make a separate setup for each game. A game's setup is
+  used while that game is running.
+* Back buttons and trackpads can also act as the **Guide / PS button** or the
+  PlayStation touchpad click.
+* **Control mode** decides when the program steps aside, for example while Steam
+  or a Steam game is running, so the two don't fight over the controller.
+* Game rumble is passed on to the controller.
+* There are also start with login, an event log for troubleshooting, and
+  ready-made controller setups for RetroArch.
+
+Closing the window keeps the program running in the tray. Quit it from the tray
+icon's menu.
+
+## If something doesn't work
+
+* **"The controller could not be opened"**: your login lacks access to the
+  controller. Installing as above fixes it; unplug and plug in the controller
+  afterwards.
+* **"The virtual controller could not be created"** (the tray says "No virtual
+  gamepad"): the program couldn't make the controller games see. Log out and in
+  again after installing.
+* Anything else: choose **Open Event Log** in the window or tray menu and include it
+  when you
+  [report a problem](https://github.com/Punjudge/Steamless-Controller-Linux/issues).
+
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Building it
+yourself, making releases and the technical details are in
+[docs/DEVELOPING.md](https://github.com/Punjudge/Steamless-Controller-Linux/blob/main/docs/DEVELOPING.md).
 
 ## Licence
 

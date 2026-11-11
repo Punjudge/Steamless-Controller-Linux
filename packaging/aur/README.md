@@ -78,7 +78,7 @@ Afterwards anyone can install with `paru -S steamless-controller-bin` or
 
 ## New version
 
-1. Tag and release as described in the main README (`vX.Y.Z`).
+1. Tag and release as described in `docs/DEVELOPING.md` (`vX.Y.Z`).
 2. In both PKGBUILDs set `pkgver=X.Y.Z`, `pkgrel=1`, and update
    `sha256sums` (`updpkgsums` from `pacman-contrib`, or `sha256sum` on the
    downloaded files; the `-bin` one is in the release's `.sha256` file).

@@ -13,7 +13,7 @@ fi
 version=$1
 changelog=$2
 previous=${3:-}
-repo=https://github.com/Punjudge/SteamlessController-Linux
+repo=https://github.com/Punjudge/Steamless-Controller-Linux
 
 section=$(awk -v v="## $version" '
     $0 == v { on = 1; next }

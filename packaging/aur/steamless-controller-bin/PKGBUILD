@@ -7,7 +7,7 @@ pkgver=1.25.2
 pkgrel=1
 pkgdesc="Use the 2026 Steam Controller as a normal gamepad, mouse and keyboard without Steam (prebuilt)"
 arch=('x86_64')
-url="https://github.com/Punjudge/SteamlessController-Linux"
+url="https://github.com/Punjudge/Steamless-Controller-Linux"
 license=('MIT')
 depends=('gcc-libs' 'glibc' 'libglvnd' 'libxkbcommon' 'libxkbcommon-x11' 'wayland'
          'libx11' 'libxcursor' 'libxi' 'libxrandr')
