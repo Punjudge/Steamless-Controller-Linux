@@ -28,13 +28,37 @@ pub fn set_autostart(on: bool) -> std::io::Result<()> {
         std::fs::create_dir_all(dir)?;
     }
     let exe = std::env::current_exe()?;
-    let text = format!(
+    std::fs::write(path, autostart_text(&exe))
+}
+
+/// The login entry for the program at `exe`. It starts in the tray, as the
+/// original's Run value does (0x140012fa0 writes the bare program path, and
+/// its start-up 0x14000c9e0 never opens the window).
+pub fn autostart_text(exe: &std::path::Path) -> String {
+    format!(
         "[Desktop Entry]\nType=Application\nName=Steamless Controller\n\
          Comment=Use the Steam Controller as a normal gamepad without Steam\n\
          Exec=\"{}\" --hidden\nIcon=input-gaming\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
         exe.display()
-    );
-    std::fs::write(path, text)
+    )
+}
+
+/// At every start the original writes its login entry again when start with
+/// login is on (0x14000c9e0 calls 0x140012fa0 right after loading the
+/// settings), so the entry follows the program when it is moved or installed
+/// another way. Returns the new entry's program when it had to change.
+pub fn sync_autostart() -> Option<PathBuf> {
+    if !autostart_enabled() {
+        return None;
+    }
+    let exe = std::env::current_exe().ok()?;
+    let want = autostart_text(&exe);
+    let path = autostart_file();
+    if std::fs::read_to_string(&path).ok().as_deref() == Some(want.as_str()) {
+        return None;
+    }
+    std::fs::write(path, want).ok()?;
+    Some(exe)
 }
 
 pub fn open_path(path: &std::path::Path) {
@@ -70,4 +94,16 @@ pub fn pick_program() -> Option<PathBuf> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn login_entry_starts_in_the_tray() {
+        let t = autostart_text(std::path::Path::new("/usr/bin/steamless-controller"));
+        assert!(t.lines().any(|l| l == "Exec=\"/usr/bin/steamless-controller\" --hidden"));
+        assert!(!t.contains("Hidden=true"));
+    }
 }

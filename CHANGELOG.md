@@ -16,8 +16,15 @@ and start a new, empty **Unreleased** above it.
   waits for the panel's tray and puts its icon there as soon as it appears. If
   no tray shows up within 30 seconds, the window opens so the program can still
   be reached.
+* If the program was moved or installed another way (for example from the
+  download to the pacman package), start with login kept starting the old copy.
+  When start with login is on, the program now points it at itself every time
+  it starts, as the Windows original does.
 
 **Event log**
+
+* The log starts with `=== Steamless Controller for Linux <version> started ===`,
+  like the original, so each start and its version are easy to find.
 
 * When the program decides whether to take the controller, the log line now
   has the same form and numbers as the Windows original (`CONTROL:`, `AUTO:`,

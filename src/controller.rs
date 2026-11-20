@@ -210,7 +210,9 @@ impl Engine {
     }
 
     fn run(mut self) {
-        eventlog::write("START: Steamless Controller for Linux");
+        // The original's first line after start-up (0x14000c9e0): the version
+        // between `===` marks, so a restart is easy to find in the log.
+        eventlog::write(start_line());
         if !self.shared.passive.load(Ordering::SeqCst) {
             let mut s = self.shared.settings.write().unwrap();
             // Manual mode starts on only when "Enable on Launch" is set.
@@ -666,6 +668,10 @@ pub fn control_line(want: bool, mode: AutoMode, steam: SteamState, profile: Opti
 }
 
 /// The heartbeat's "alive" line, fields in the original's order.
+pub fn start_line() -> String {
+    format!("=== Steamless Controller for Linux {} started ===", env!("CARGO_PKG_VERSION"))
+}
+
 pub fn heartbeat_line(up: Duration, connected: bool, game_mode: bool, steam: SteamState,
                       mode: AutoMode, want: bool) -> String {
     let m = up.as_secs() / 60;
@@ -1570,6 +1576,13 @@ mod tests {
     use super::*;
 
     /// Guide / PS Button and PS Touchpad Click as bindable outputs (upstream #121).
+    #[test]
+    fn start_line_matches_program() {
+        let l = start_line();
+        assert!(l.starts_with("=== ") && l.ends_with(" started ==="));
+        assert!(l.contains(env!("CARGO_PKG_VERSION")));
+    }
+
     #[test]
     fn heartbeat_line_matches_program() {
         let l = heartbeat_line(Duration::from_secs(3 * 3600 + 7 * 60 + 59), true, false,

@@ -125,6 +125,11 @@ fn main() {
         shared.passive.store(true, Ordering::SeqCst);
     }
     let _lock = if screenshot { None } else { single_instance(&shared) };
+    if !screenshot {
+        if let Some(exe) = desktop::sync_autostart() {
+            eventlog::write(format!("STARTUP: start with login now runs {}", exe.display()));
+        }
+    }
     let engine = controller::spawn_engine(shared.clone());
     let tray = !screenshot && tray::spawn(shared.clone(), args.hidden);
 
