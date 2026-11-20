@@ -9,6 +9,14 @@ and start a new, empty **Unreleased** above it.
 
 ## Unreleased
 
+**Fixed**
+
+* Started at login on COSMIC (and other desktops whose panel comes up a moment
+  later), the program opened its window instead of staying in the tray. It now
+  waits for the panel's tray and puts its icon there as soon as it appears. If
+  no tray shows up within 30 seconds, the window opens so the program can still
+  be reached.
+
 **Event log**
 
 * When the program decides whether to take the controller, the log line now

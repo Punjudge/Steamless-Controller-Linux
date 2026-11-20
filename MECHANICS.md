@@ -84,6 +84,11 @@ replacements with no counterpart in the program. Parts that were not translated:
   autostart), the Windows tray icon (StatusNotifierItem), and choosing a profile
   by the **foreground window**. Wayland has no foreground-window query, so Linux
   matches the newest running program instead.
+  A hidden start (`--hidden`, which start with login uses) waits for the
+  panel's tray to appear instead of opening the window at once, because on
+  COSMIC the tray comes up after autostart programs; after 30 s with no tray the
+  window opens (`tray::spawn`, `TRAY_WAIT`). Windows always has a tray, so the
+  original has no counterpart.
 * **Drawing the window**: the original is plain Win32 drawing and Linux uses
   egui, so only sizes are taken (see the table above), not pixels.
 * **PlayStation motion (gyro)**: not built, so not looked for.

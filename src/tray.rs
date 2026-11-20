@@ -6,7 +6,7 @@ use crate::controller::{Command, Shared, Status};
 use crate::desktop;
 use crate::eventlog;
 use ksni::menu::{CheckmarkItem, MenuItem, RadioGroup, RadioItem, StandardItem, SubMenu};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -32,7 +32,14 @@ pub fn tray_look(st: &Status) -> (&'static str, &'static str) {
 
 pub struct Tray {
     shared: Arc<Shared>,
+    /// The panel's tray (StatusNotifierWatcher) has the icon.
+    online: Arc<AtomicBool>,
 }
+
+/// How long a hidden start waits for the panel's tray before opening the
+/// window instead. COSMIC's tray applet comes up a little after the session
+/// starts its autostart programs, so the first try often finds no tray.
+pub const TRAY_WAIT: Duration = Duration::from_secs(30);
 
 fn show_window(shared: &Shared) {
     shared.show_window.store(true, Ordering::SeqCst);
@@ -68,6 +75,17 @@ impl ksni::Tray for Tray {
             icon_name: icon.into(),
             icon_pixmap: Vec::new(),
         }
+    }
+
+    fn watcher_online(&self) {
+        self.online.store(true, Ordering::SeqCst);
+        eventlog::write("TRAY: the panel's tray appeared, icon shown");
+    }
+
+    fn watcher_offline(&self, reason: ksni::OfflineReason) -> bool {
+        self.online.store(false, Ordering::SeqCst);
+        eventlog::write(format!("TRAY: waiting for the panel's tray ({reason:?})"));
+        true
     }
 
     fn activate(&mut self, _x: i32, _y: i32) {
@@ -179,15 +197,36 @@ impl ksni::Tray for Tray {
 }
 
 /// Starts the tray icon. Returns false when the desktop has no tray to show it in.
-pub fn spawn(shared: Arc<Shared>) -> bool {
+///
+/// With `wait_for_panel` (a hidden start at login) a missing tray is not an
+/// error: the icon registers as soon as the panel's tray appears. If none has
+/// appeared after [`TRAY_WAIT`], the window is opened so the program can still
+/// be reached.
+pub fn spawn(shared: Arc<Shared>, wait_for_panel: bool) -> bool {
     use ksni::blocking::TrayMethods;
-    let handle = match (Tray { shared: shared.clone() }).spawn() {
+    let online = Arc::new(AtomicBool::new(true));
+    let tray = Tray { shared: shared.clone(), online: online.clone() };
+    let handle = match tray.assume_sni_available(wait_for_panel).spawn() {
         Ok(h) => h,
         Err(e) => {
             eventlog::write(format!("TRAY: not available: {e}"));
             return false;
         }
     };
+    if wait_for_panel {
+        let sh = shared.clone();
+        let on = online.clone();
+        std::thread::spawn(move || {
+            let start = std::time::Instant::now();
+            while start.elapsed() < TRAY_WAIT && !sh.quit.load(Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_millis(250));
+            }
+            if !on.load(Ordering::SeqCst) && !sh.quit.load(Ordering::SeqCst) {
+                eventlog::write("TRAY: no tray after 30 s, opening the window instead");
+                show_window(&sh);
+            }
+        });
+    }
     std::thread::Builder::new()
         .name("tray-refresh".into())
         .spawn(move || {
@@ -225,7 +264,7 @@ mod tests {
 
     #[test]
     fn icon_stays_visible_when_steamless_mode_is_off() {
-        let tray = Tray { shared: Shared::new(Settings::default()) };
+        let tray = Tray { shared: Shared::new(Settings::default()), online: Arc::new(AtomicBool::new(true)) };
         for on in [false, true] {
             tray.shared.status.lock().unwrap().game_mode = on;
             assert!(matches!(tray.status(), ksni::Status::Active), "game_mode={on}");

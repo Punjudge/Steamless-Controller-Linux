@@ -126,7 +126,7 @@ fn main() {
     }
     let _lock = if screenshot { None } else { single_instance(&shared) };
     let engine = controller::spawn_engine(shared.clone());
-    let tray = !screenshot && tray::spawn(shared.clone());
+    let tray = !screenshot && tray::spawn(shared.clone(), args.hidden);
 
     let mut show = !(args.hidden && tray);
     let mut page = args.page;
